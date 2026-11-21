@@ -1,0 +1,8 @@
+{"pregunta": "¿A qué hora cierra la biblioteca entre semana?", "idioma": "es", "debe_responder": true, "esperado": ["22"]}
+{"pregunta": "¿Cuánto tarda en llegar una constancia de estudios?", "idioma": "es", "debe_responder": true, "esperado": ["3"]}
+{"pregunta": "¿Cuántos semestres dura ITC?", "idioma": "es", "debe_responder": true, "esperado": ["8"]}
+{"pregunta": "¿Cuántas horas de servicio social necesito para graduarme?", "idioma": "es", "debe_responder": true, "esperado": ["480"]}
+{"pregunta": "What TOEFL score do I need to graduate?", "idioma": "en", "debe_responder": true, "esperado": ["550"]}
+{"pregunta": "Until which week can I drop a course?", "idioma": "en", "debe_responder": true, "esperado": ["10"]}
+{"pregunta": "¿Cuánto cuesta la colegiatura por semestre?", "idioma": "es", "debe_responder": false, "esperado": []}
+{"pregunta": "¿Quién es el director de la carrera de Ingeniería Civil?", "idioma": "es", "debe_responder": false, "esperado": []}

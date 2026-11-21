@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+openai
+chromadb
+pypdf
+python-docx
+openpyxl
+streamlit
+requests
+python-multipart
+faster-whisper
+av<16  # faster-whisper 1.2 falla con PyAV más nuevo
+piper-tts>=1.3
+# Solo para Whisper en GPU NVIDIA:
+nvidia-cublas-cu12
+nvidia-cudnn-cu12

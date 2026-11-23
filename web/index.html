@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Asistente Tec</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- three.js se carga del CDN (requiere internet); TalkingHead y HeadAudio están en vendor/ -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js/+esm",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/",
+      "talkinghead": "./vendor/talkinghead/talkinghead.mjs",
+      "headaudio": "./vendor/headaudio/headaudio.min.mjs"
+    }
+  }
+  </script>
+</head>
+<body data-status="loading">
+
+  <main id="stage">
+    <div id="avatar" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="identity">
+        <h1 id="assistant-name">Asistente Tec</h1>
+        <p id="assistant-description"></p>
+      </div>
+      <div class="status" role="status" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="status-label">Cargando…</span>
+      </div>
+      <button id="settings-open" class="icon-button" type="button" aria-label="Configuración" data-i18n-label="settings">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6a.5.5 0 0 0 .1-.6l-1.9-3.3a.5.5 0 0 0-.6-.2l-2.4 1a7.3 7.3 0 0 0-1.7-1l-.4-2.5a.5.5 0 0 0-.5-.4h-3.8a.5.5 0 0 0-.5.4l-.4 2.5a7.3 7.3 0 0 0-1.7 1l-2.4-1a.5.5 0 0 0-.6.2L2.5 8.800a.5.5 0 0 0 .1.6l2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6a.5.5 0 0 0-.1.6l1.900 3.300a.5.5 0 0 0 .6.2l2.400-1a7.300 7.300 0 0 0 1.700 1l.4 2.500a.5.5 0 0 0 .5.4h3.800a.5.5 0 0 0 .5-.4l.4-2.500a7.300 7.300 0 0 0 1.700-1l2.400 1a.5.5 0 0 0 .6-.2l1.900-3.300a.5.5 0 0 0-.1-.6zM12 15.500a3.500 3.500 0 1 1 0-7 3.500 3.500 0 0 1 0 7z"/></svg>
+      </button>
+    </header>
+
+    <section class="dialog">
+      <p id="user-line" class="user-line" hidden></p>
+      <p id="subtitle" class="subtitle" aria-live="polite" hidden></p>
+      <p id="meta" class="meta" hidden></p>
+
+      <form id="ask-form" class="ask" autocomplete="off">
+        <button id="mic" class="mic" type="button" aria-label="Hablar" data-i18n-label="mic" disabled>
+          <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M12 15a3.500 3.500 0 0 0 3.500-3.500v-6a3.500 3.500 0 0 0-7 0v6A3.500 3.500 0 0 0 12 15zm6-3.500a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 0 0-2 0 6 6 0 0 0 5 5.900V20H8.500a1 1 0 0 0 0 2h7a1 1 0 0 0 0-2H13v-2.600a6 6 0 0 0 5-5.900z"/></svg>
+        </button>
+        <input id="question" type="text" placeholder="Escribe tu pregunta" data-i18n-placeholder="placeholder" disabled>
+        <button id="send" class="send" type="submit" aria-label="Enviar" data-i18n-label="send" disabled>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3.400 20.400 21 12 3.400 3.600 3 10l12 2-12 2z"/></svg>
+        </button>
+      </form>
+      <p class="hint" data-i18n="hint">Pulsa el micrófono y habla; se envía solo cuando terminas.</p>
+    </section>
+  </main>
+
+  <aside id="settings" class="settings" aria-label="Configuración" hidden>
+    <div class="settings-head">
+      <h2 data-i18n="settings">Configuración</h2>
+      <button id="settings-close" class="icon-button" type="button" aria-label="Cerrar" data-i18n-label="close">✕</button>
+    </div>
+    <label><span data-i18n="profile">Asistente</span><select id="profile"></select></label>
+    <label><span data-i18n="language">Idioma</span><select id="language"></select></label>
+    <label><span data-i18n="character">Personaje</span><select id="character"></select></label>
+    <label><span data-i18n="engine">Motor de voz</span>
+      <select id="engine">
+        <option value="piper" data-i18n="enginePiper">Piper (rápida)</option>
+        <option value="chatterbox" data-i18n="engineChatterbox">Chatterbox (natural, más lenta)</option>
+      </select>
+    </label>
+    <label><span data-i18n="voice">Voz</span><select id="voice"></select></label>
+    <label class="check"><input id="hands-free" type="checkbox"><span data-i18n="handsFree">Conversación continua: vuelve a escuchar al terminar de hablar</span></label>
+    <button id="new-chat" class="secondary" type="button" data-i18n="newChat">Nueva conversación</button>
+    <p id="license" class="license"></p>
+  </aside>
+
+  <div id="start" class="start">
+    <div class="start-card">
+      <div class="start-logo" aria-hidden="true">🎓</div>
+      <h2>Asistente Tec</h2>
+      <p data-i18n="startText">Un asistente virtual con voz y avatar para resolver tus dudas.</p>
+      <button id="start-button" type="button" data-i18n="start" disabled>Comenzar</button>
+      <p id="start-progress" class="start-progress">Cargando…</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="alert" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

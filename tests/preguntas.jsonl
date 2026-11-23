@@ -6,3 +6,12 @@
 {"pregunta": "Until which week can I drop a course?", "idioma": "en", "debe_responder": true, "esperado": ["10"]}
 {"pregunta": "¿Cuánto cuesta la colegiatura por semestre?", "idioma": "es", "debe_responder": false, "esperado": []}
 {"pregunta": "¿Quién es el director de la carrera de Ingeniería Civil?", "idioma": "es", "debe_responder": false, "esperado": []}
+{"previas": ["¿Cómo doy de baja una materia?"], "pregunta": "Y si es que ya pasó esa fecha.", "idioma": "es", "debe_responder": true, "esperado": ["autoriza"]}
+{"previas": ["¿Cuál es el horario de la biblioteca?"], "pregunta": "¿Y en exámenes finales?", "idioma": "es", "debe_responder": true, "esperado": ["24"]}
+{"previas": ["¿Cuántos semestres dura ITC?"], "pregunta": "¿Y cuánto cuesta cada uno?", "idioma": "es", "debe_responder": false, "esperado": []}
+{"pregunta": "¿Qué becas ofrece el Tec?", "idioma": "es", "debe_responder": false, "esperado": []}
+{"pregunta": "¿Cuántos semestres dura ISC?", "idioma": "es", "debe_responder": true, "esperado": ["refiere", "ITC", "8"]}
+{"pregunta": "¿Cuántos semestres dura la carrera de sistemas?", "idioma": "es", "debe_responder": true, "esperado": ["refiere", "8"]}
+{"pregunta": "como doi de vaja una materya", "idioma": "es", "debe_responder": true, "esperado": ["semana 10"], "no_esperado": ["refiere"]}
+{"pregunta": "a k hora sierra la bibloteca", "idioma": "es", "debe_responder": true, "esperado": ["22"], "no_esperado": ["refiere"]}
+{"pregunta": "¿Cuántos semestres dura ITC?", "idioma": "es", "debe_responder": true, "esperado": ["8"], "no_esperado": ["refiere"]}

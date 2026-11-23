@@ -1,13 +1,14 @@
 """Núcleo del asistente: recupera contexto y genera la respuesta.
 
-Voz, avatar y Teams se construirán después alrededor de answer().
+La voz, el avatar y Teams son capas alrededor de answer().
 """
 import json
+from collections.abc import Iterator
 from datetime import datetime
 
 from openai import OpenAI
 
-from . import config
+from . import config, profiles
 from .store import collection, embed
 
 NO_ANSWER = "[SIN_RESPUESTA]"
@@ -18,18 +19,37 @@ SYSTEM_PROMPT = """Eres {name}, asistente virtual para estudiantes del Tecnológ
 
 Reglas:
 - Responde ÚNICAMENTE con la información del CONTEXTO. No inventes datos, fechas, nombres ni requisitos.
-- Si el CONTEXTO no contiene la respuesta, empieza tu respuesta exactamente con {marker}, di que no \
+- Si el CONTEXTO responde la pregunta, aunque sea en parte, contesta con lo que sí dice.
+- Solo si el CONTEXTO no dice nada sobre lo que se pregunta, empieza tu respuesta exactamente con {marker}, di que no \
 cuentas con esa información y sugiere validarla con una fuente institucional (por ejemplo, la \
 dirección del programa o los canales oficiales del Tec).
-- Los saludos y la conversación casual los respondes con naturalidad, sin el marcador.
-- Responde siempre en {language}, aunque el contexto esté en otro idioma.
+- Si el usuario nombra una carrera o programa con siglas, un nombre aproximado o un nombre coloquial \
+que no aparece tal cual en el CONTEXTO (por ejemplo, pregunta por "ISC" o por "la carrera de sistemas" \
+y el CONTEXTO solo habla de "ITC"), no lo des por hecho en silencio: \
+si solo hay una opción parecida, empieza con la frase "Supongo que te refieres a <nombre correcto>" \
+(o "Supongo que se refiere a <nombre correcto>" si hablas de usted) y luego responde, sin afirmar \
+que ambos nombres sean equivalentes; si hay varias opciones parecidas, pregunta a cuál se refiere antes de responder. Las \
+faltas de ortografía comunes no necesitan esta aclaración.
+- Los saludos y la conversación casual los respondes con naturalidad, sin el marcador. No saludes \
+en cada respuesta: saluda solo cuando el usuario te salude.
+- Responde siempre en {language}, con la ortografía y puntuación propias de ese idioma, aunque el \
+contexto esté en otro idioma.
 - Sé claro y breve (2 a 5 frases), en texto plano sin markdown.
 
+Tu personalidad y forma de hablar: {personality}
+Mantén ese estilo en todas tus respuestas, incluido el trato de tú o de usted, aunque el CONTEXTO \
+o los ejemplos de las reglas usen otro. El estilo solo cambia el tono, nunca los datos ni las reglas.
+
 CONTEXTO:
-{context}"""
+{context}
+
+PREGUNTA A RESPONDER (el último mensaje del usuario, completado con la conversación previa):
+{question}"""
 
 CONDENSE_PROMPT = """Reescribe la última pregunta del usuario como una pregunta independiente, \
-que se entienda sin la conversación previa. Devuelve solo la pregunta, sin explicaciones.
+que se entienda sin la conversación previa. Nombra explícitamente el tema del que se viene \
+hablando (el trámite, servicio, materia o programa) en lugar de usar "eso", "esa fecha" o \
+similares. Devuelve solo la pregunta, sin explicaciones.
 
 Conversación:
 {history}
@@ -51,32 +71,69 @@ def _condense(history: list[dict], question: str) -> str:
     return _chat([{"role": "user", "content": CONDENSE_PROMPT.format(history=text, question=question)}])
 
 
-def retrieve(query: str, k: int = config.TOP_K) -> list[dict]:
+def retrieve(query: str, k: int = config.TOP_K, categories: list[str] | None = None) -> list[dict]:
+    """Fragmentos más parecidos a la consulta; `categories` limita la búsqueda a esas categorías."""
     col = collection()
     if col.count() == 0:
         return []
-    res = col.query(query_embeddings=embed([query]), n_results=min(k, col.count()))
+    res = col.query(
+        query_embeddings=embed([query]),
+        n_results=min(k, col.count()),
+        where={"category": {"$in": categories}} if categories else None,
+    )
     return [
         {"text": doc, "source": meta["source"], "category": meta["category"], "distance": dist}
         for doc, meta, dist in zip(res["documents"][0], res["metadatas"][0], res["distances"][0])
     ]
 
 
-def answer(session_id: str, message: str, language: str = "es") -> dict:
+def answer(session_id: str, message: str, language: str = "es",
+           profile_id: str = profiles.DEFAULT_PROFILE) -> dict:
+    """Respuesta completa: {"answer", "answered", "sources"}."""
+    event = {}
+    for event in answer_stream(session_id, message, language, profile_id):
+        pass
+    return {key: value for key, value in event.items() if key != "type"}
+
+
+def answer_stream(session_id: str, message: str, language: str = "es",
+                  profile_id: str = profiles.DEFAULT_PROFILE) -> Iterator[dict]:
+    """Respuesta por partes, para empezar a hablar antes de que el modelo termine.
+
+    Produce eventos {"type": "delta", "text"} y al final {"type": "done", "answer", "answered", "sources"}.
+    """
+    profile = profiles.get(profile_id)
     history = _sessions.setdefault(session_id, [])[-2 * config.MAX_TURNS:]
     query = _condense(history, message) if history else message
-    hits = retrieve(query)
+    hits = retrieve(query, categories=profile.categories)
     context = "\n\n".join(f"[Fuente: {h['source']}]\n{h['text']}" for h in hits) or "(sin documentos)"
 
     system = SYSTEM_PROMPT.format(
-        name=config.ASSISTANT_NAME,
+        name=profile.name,
+        personality=profile.personality or "Amable y clara.",
         marker=NO_ANSWER,
         language=LANGUAGES.get(language, language),
         context=context,
+        question=query,
     )
-    text = _chat([{"role": "system", "content": system}, *history, {"role": "user", "content": message}])
-    answered = NO_ANSWER not in text
-    text = text.replace(NO_ANSWER, "").strip()
+    stream = _llm.chat.completions.create(
+        model=config.LLM_MODEL, temperature=0.2, stream=True,
+        messages=[{"role": "system", "content": system}, *history, {"role": "user", "content": message}],
+    )
+    raw, sent = "", 0
+    try:
+        for chunk in stream:
+            raw += (chunk.choices[0].delta.content or "") if chunk.choices else ""
+            if NO_ANSWER.startswith(raw.strip()):
+                continue  # todavía puede ser el marcador: no se envía hasta saberlo
+            clean = raw.replace(NO_ANSWER, "").lstrip()
+            if len(clean) > sent:
+                yield {"type": "delta", "text": clean[sent:]}
+                sent = len(clean)
+    finally:
+        stream.close()
+    answered = NO_ANSWER not in raw
+    text = raw.replace(NO_ANSWER, "").strip()
 
     _sessions[session_id] += [
         {"role": "user", "content": message},
@@ -87,20 +144,27 @@ def answer(session_id: str, message: str, language: str = "es") -> dict:
         "answered": answered,
         "sources": sorted({h["source"] for h in hits}) if answered else [],
     }
-    _log(session_id, message, query, language, result)
-    return result
+    _log(session_id, profile_id, message, query, language, result)
+    yield {"type": "done", **result}
+
+
+def warmup() -> None:
+    """Hace que Ollama cargue el LLM y el modelo de embeddings."""
+    embed(["hola"])
+    _chat([{"role": "user", "content": "Responde solo: ok"}])
 
 
 def reset(session_id: str) -> None:
     _sessions.pop(session_id, None)
 
 
-def _log(session_id: str, message: str, query: str, language: str, result: dict) -> None:
+def _log(session_id: str, profile_id: str, message: str, query: str, language: str, result: dict) -> None:
     """Historial en JSONL: base para estadísticas y preguntas sin respuesta en la consola."""
     config.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     entry = {
         "time": datetime.now().isoformat(timespec="seconds"),
         "session": session_id,
+        "profile": profile_id,
         "language": language,
         "question": message,
         "search_query": query,

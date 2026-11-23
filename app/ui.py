@@ -19,10 +19,15 @@ if "session_id" not in state:
     state.autoplay = False   # reproducir el audio de la última respuesta
 
 
+ENGINES = {"Piper (rápida)": "piper", "Chatterbox (natural, más lenta)": "chatterbox"}
+
+
 @st.cache_data(ttl=60)
-def get_voices(language: str) -> list[str]:
+def get_voices(language: str, engine: str) -> list[str]:
     try:
-        return requests.get(f"{API_URL}/voices", params={"language": language}, timeout=10).json()
+        resp = requests.get(f"{API_URL}/voices", params={"language": language, "engine": engine}, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
     except requests.RequestException:
         return []
 
@@ -30,7 +35,8 @@ def get_voices(language: str) -> list[str]:
 with st.sidebar:
     language = LANGUAGES[st.selectbox("Idioma", list(LANGUAGES))]
     speak = st.toggle("Responder con voz", value=True)
-    voice = st.selectbox("Voz", get_voices(language)) if speak else None
+    engine = ENGINES[st.selectbox("Motor de voz", list(ENGINES))] if speak else None
+    voice = st.selectbox("Voz", get_voices(language, engine)) if speak else None
     if st.button("Nueva conversación"):
         requests.delete(f"{API_URL}/sessions/{state.session_id}", timeout=10)
         state.session_id = uuid.uuid4().hex
@@ -54,8 +60,8 @@ def ask(prompt: str) -> None:
     if speak and voice:
         tts = requests.post(
             f"{API_URL}/tts",
-            json={"text": bot["answer"], "language": language, "voice": voice},
-            timeout=120,
+            json={"text": bot["answer"], "language": language, "voice": voice, "engine": engine},
+            timeout=300,
         )
         tts.raise_for_status()
         bot["audio"] = tts.content

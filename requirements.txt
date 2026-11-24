@@ -17,3 +17,4 @@ chatterbox-tts
 # Solo para Whisper en GPU NVIDIA:
 nvidia-cublas-cu12
 nvidia-cudnn-cu12
+playwright>=1.48  # conexión directa a Teams; usa el Chrome o Edge ya instalado

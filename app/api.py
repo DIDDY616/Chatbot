@@ -7,6 +7,7 @@ import json
 import mimetypes
 import uuid
 from typing import Literal
+from urllib.parse import urlparse
 
 import openai
 from fastapi import FastAPI, Form, HTTPException, Response, UploadFile
@@ -14,7 +15,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import config, documents, evaluation, faqs, history, lipsync, profiles, rag, voice, wake
+from . import config, documents, evaluation, faqs, history, lipsync, profiles, rag, teams, voice, wake
 from .ingest import ingest_all
 from .store import collection
 
@@ -24,6 +25,8 @@ mimetypes.add_type("text/javascript", ".mjs")
 mimetypes.add_type("model/gltf-binary", ".glb")
 
 app = FastAPI(title="Asistente Tec")
+
+TEAMS_HOSTS = ("teams.microsoft.com", "teams.live.com", "teams.cloud.microsoft", "teams.microsoft.us")
 
 
 @app.exception_handler(openai.APIConnectionError)
@@ -282,6 +285,40 @@ def rate_answer(entry_id: str, feedback: Feedback):
 @app.get("/stats")
 def stats():
     return history.stats()
+
+
+# ---------- Reuniones de Teams (conexión directa) ----------
+
+class MeetingRequest(BaseModel):
+    url: str
+    profile: str = profiles.DEFAULT_PROFILE
+    name: str | None = None  # nombre con el que aparece en la reunión; por omisión, el del asistente
+
+
+@app.post("/meeting/join")
+def join_meeting(req: MeetingRequest):
+    """El asistente entra a la reunión del enlace con su avatar y su voz."""
+    url = req.url.strip()
+    host = urlparse(url).hostname or ""
+    if not url.startswith("https://") or not host.endswith(TEAMS_HOSTS):
+        raise HTTPException(400, "El enlace no parece de una reunión de Teams.")
+    try:
+        profile = profiles.get(req.profile)
+        return teams.join(url, req.profile, (req.name or "").strip() or profile.name)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+
+@app.post("/meeting/leave")
+def leave_meeting():
+    return teams.leave()
+
+
+@app.get("/meeting")
+def meeting_status():
+    return teams.status()
 
 
 @app.get("/health")

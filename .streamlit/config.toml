@@ -1,0 +1,14 @@
+# Aspecto de la consola de administración: los mismos colores planos que la página del avatar.
+[theme]
+base = "light"
+primaryColor = "#1d3f72"
+backgroundColor = "#f3efe6"
+secondaryBackgroundColor = "#e7e1d3"
+textColor = "#1c1b19"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

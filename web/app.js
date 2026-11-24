@@ -4,6 +4,7 @@ import { TalkingHead } from "talkinghead";
 import { HeadAudio } from "headaudio";
 import { LANGUAGES, TEXTS } from "./i18n.js";
 import { startMeetingListener } from "./reunion.js";
+import { createBridge } from "./puente.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,8 +23,12 @@ const MEETING_CAMERA = { cameraY: -0.2, cameraDistance: -1.4 };
 const MEETING_TITLE = "Asistente Tec - Reunion";
 const ATTENTIVE_MS = 10000;    // tras oír solo su nombre, espera la pregunta este tiempo
 
+const PARAMS = new URLSearchParams(location.search);
+// Conexión directa: la imagen y la voz van a la pestaña de Teams por un puente (puente.js).
+const BRIDGED = PARAMS.has("puente");
+
 const state = {
-  meeting: new URLSearchParams(location.search).has("reunion"),  // modo reunión (Teams)
+  meeting: PARAMS.has("reunion") || BRIDGED,  // modo reunión (Teams)
   bargeIn: recall("bargeIn") === "voice" ? "voice" : "name",  // qué interrumpe al asistente en reunión
   micId: recall("micId"),
   outputId: recall("outputId"),
@@ -44,6 +49,7 @@ let head = null;      // TalkingHead
 let listening = null; // grabación en curso: { stream, recorder, chunks, spoke, send }
 let audioLipsync = false;  // true solo cuando una frase llega sin visemas (respaldo por audio)
 let stopMeeting = null;    // cierra la escucha continua del modo reunión
+let bridge = null;         // puente con la pestaña de Teams (solo en conexión directa)
 let meetingChange = 0;     // sube con cada cambio del modo reunión; descarta aperturas viejas
 let attentiveUntil = 0;    // hasta cuándo la siguiente frase cuenta como pregunta sin decir el nombre
 let heard = Promise.resolve();  // las frases oídas se transcriben de una en una
@@ -252,7 +258,9 @@ function createSpeaker(turn) {
 }
 
 function finishTurn() {
-  setStatus("idle");
+  // Si acaba de contestar "¿Sí? Adelante.", sigue atento a la pregunta que viene.
+  if (state.meeting && performance.now() < attentiveUntil) setStatus("listening", t("attentive"));
+  else setStatus("idle");
   if (state.handsFree) listen();
   if (state.meeting) {
     // En la reunión el subtítulo se ve en la cámara: se quita poco después de terminar.
@@ -290,7 +298,7 @@ async function ask(text) {
     for await (const event of readEvents(resp)) {
       if (turn !== state.turn) return;
       if (event.type === "delta") speaker.add(event.text);
-      else if (!event.answered) show("meta", `⚠ ${t("noInfo")}`, "meta warning");
+      else if (!event.answered) show("meta", t("noInfo"), "meta warning");
       else if (event.sources.length) show("meta", `${t("sources")}: ${event.sources.join(", ")}`, "meta");
     }
     await speaker.finish();
@@ -414,11 +422,14 @@ async function setMeeting(on) {
   if (state.status === "idle") setStatus("idle");  // la etiqueta de "listo" cambia con el modo
   if (!on) return;
   try {
-    const stop = await withMic((deviceId) => startMeetingListener(head.audioCtx, deviceId, {
+    const callbacks = {
       onSustained: onInterrupted,
       onPartial: onOverheard,
       onSegment: (wav) => (heard = heard.then(() => onHeard(wav))),
-    }));
+    };
+    const stop = bridge
+      ? await startMeetingListener(head.audioCtx, bridge.inbound, callbacks)
+      : await withMic((deviceId) => startMeetingListener(head.audioCtx, deviceId, callbacks));
     if (change === meetingChange) stopMeeting = stop;
     else stop();  // mientras se abría el micrófono cambiaron el modo otra vez
   } catch (error) {
@@ -436,14 +447,24 @@ async function transcribeMeeting(wav) {
 }
 
 // Deja de hablar y espera la pregunta: la siguiente frase cuenta aunque no repita el nombre.
-function attend() {
+// Con `reply` contesta antes algo corto en voz alta ("¿Sí? Adelante."), para que quien lo
+// llamó sepa que lo oyó aunque no esté mirando la pantalla.
+function attend(reply) {
   interrupt();
   show("subtitle", "");
-  attentiveUntil = performance.now() + ATTENTIVE_MS;
-  setStatus("listening", t("attentive"));
+  const wait = ATTENTIVE_MS + (reply ? 3500 : 0);  // lo que tarda en decir la respuesta no cuenta
+  attentiveUntil = performance.now() + wait;
+  if (reply) {
+    setStatus("thinking", t("preparing"));
+    const speaker = createSpeaker(state.turn);
+    speaker.add(reply);
+    speaker.finish();
+  } else {
+    setStatus("listening", t("attentive"));
+  }
   setTimeout(() => {
     if (state.status === "listening" && performance.now() >= attentiveUntil) setStatus("idle");
-  }, ATTENTIVE_MS + 100);
+  }, wait + 100);
 }
 
 function silence() {
@@ -474,13 +495,14 @@ async function onOverheard(wav) {
 async function onHeard(wav) {
   if (!state.meeting) return;
   try {
-    const { text, addressed, question, stop } = await transcribeMeeting(wav);
+    const { text, addressed, question, stop, ping } = await transcribeMeeting(wav);
     if (!state.meeting || !text) return;
     // En la configuración se ve lo último que oyó: sirve para saber cómo escribe su nombre.
     show("heard", `${t("lastHeard")}: «${text}» ${addressed ? "✓" : "✗"} ${t(addressed ? "heardName" : "heardNoName")}`);
     const attentive = performance.now() < attentiveUntil;
-    if (addressed && stop) silence();              // "TecBot, espera", "gracias, TecBot"
-    else if (addressed && !question) attend();     // solo su nombre: viene la pregunta
+    if (addressed && stop) silence();                            // "TecBot, espera", "gracias, TecBot"
+    else if (addressed && ping) attend(t("hereIAm"));            // "TecBot, ¿me escuchas?"
+    else if (addressed && !question) attend(t("yesTellMe"));     // solo su nombre: viene la pregunta
     else if (addressed || attentive) {
       attentiveUntil = 0;
       ask(addressed ? question : text);
@@ -667,11 +689,21 @@ async function start() {
     window.assistant = { state, head, ask, listen, interrupt, setMeeting };  // para depurar desde la consola
     await initLipsync();
     warmup();
-    await applyOutput();
+    if (BRIDGED) {
+      bridge = createBridge(head, () => ({
+        status: state.status,
+        label: $("status-label").textContent,
+        subtitle: $("subtitle").hidden ? "" : $("subtitle").textContent,
+      }));
+    } else {
+      await applyOutput();
+    }
     await loadAvatar();
     $("start").classList.add("hidden");
     if (state.meeting) await setMeeting(true);
-    greet();
+    // En conexión directa el saludo espera a que el asistente ya esté dentro de la reunión.
+    if (BRIDGED) window.puente = { offer: bridge.offer, finish: bridge.finish, info: bridge.info, greet, state };
+    else greet();
   } catch (error) {
     console.error(error);
     head = null;
@@ -697,14 +729,14 @@ async function init() {
     fillSelect($("profile"), Object.entries(state.profiles).map(([id, p]) => [id, p.name]));
     fillSelect($("language"), Object.entries(LANGUAGES));
     fillSelect($("character"), state.avatars.map((a) => [a.id, a.name]));
-    const requested = new URLSearchParams(location.search).get("perfil");
+    const requested = PARAMS.get("perfil");
     await applyProfile(state.profiles[requested] ? requested : Object.keys(state.profiles)[0]);
     $("start-progress").textContent = "";
     $("start-button").disabled = false;
     $("start-button").onclick = start;
     // Con ?auto arranca sin pulsar Comenzar. Solo sirve si el navegador se abrió permitiendo
     // audio sin interacción, como hace scripts/avatar_reunion.bat.
-    if (new URLSearchParams(location.search).has("auto")) start();
+    if (PARAMS.has("auto") || BRIDGED) start();
   } catch (error) {
     console.error(error);
     $("start-progress").textContent = `${t("error")} (${error.message})`;

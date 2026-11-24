@@ -50,6 +50,15 @@ STOP_CASES = [
     ("TecBot, por favor.", False),
 ]
 
+# (frase transcrita, ¿solo preguntan si está oyendo?)
+PING_CASES = [
+    ("TecBot, ¿me escuchas?", True),
+    ("Hola, TecBot, ¿me oyes?", True),
+    ("TecBot, ¿estás ahí?", True),
+    ("TecBot, ¿me escuchas? Quiero saber el horario de la biblioteca y cuánto cuesta la credencial.", False),
+    ("TecBot, ¿cuándo son las inscripciones?", False),
+]
+
 # (nombre del asistente, frase que se sintetiza, ¿debe activarlo?)
 VOICE_CASES = [
     ("TecBot", "TecBot, ¿cuándo son las inscripciones?", True),
@@ -79,6 +88,12 @@ def main() -> int:
         ok = got["addressed"] and got["stop"] == stop
         failures += not ok
         print(f"{'OK   ' if ok else 'FALLA'} alto={stop} {text!r} -> {got}")
+
+    for text, ping in PING_CASES:
+        got = wake.detect(text, ["TecBot"], "es")
+        ok = got["addressed"] and got["ping"] == ping
+        failures += not ok
+        print(f"{'OK   ' if ok else 'FALLA'} ping={ping} {text!r} -> {got}")
 
     if "--voz" in sys.argv:
         speakers = voice.list_voices("es")

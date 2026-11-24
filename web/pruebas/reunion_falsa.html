@@ -1,0 +1,99 @@
+<!doctype html>
+<!-- Reunión simulada para probar la conexión directa sin Teams (tests/puente.py).
+     Hace lo mismo que haría Teams: pide cámara y micrófono, los muestra, y recibe por una
+     conexión WebRTC la voz de un "participante" que habla con frases sintetizadas. -->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Reunión simulada</title>
+  <style>
+    body { margin: 0; background: #111; color: #eee; font: 14px system-ui, sans-serif; }
+    video { display: block; width: 1280px; height: 720px; background: #000; }
+    pre { margin: 8px; }
+  </style>
+</head>
+<body>
+  <video id="camara" autoplay muted playsinline></video>
+  <!-- Pantalla previa y botón de colgar con los mismos identificadores que usa Teams web. -->
+  <div id="previa">
+    <input data-tid="prejoin-display-name-input" placeholder="Type your name">
+    <button data-tid="prejoin-join-button" onclick="window.unido = document.querySelector('input').value; previa.hidden = true; colgar.hidden = false;">Join now</button>
+  </div>
+  <button id="hangup-button" hidden onclick="this.hidden = true; window.colgado = true;">Leave</button>
+  <script>
+    const previa = document.getElementById("previa"), colgar = document.getElementById("hangup-button");
+    // ?sesion simula que el navegador ya inició sesión: no hay campo para el nombre de invitado.
+    if (new URLSearchParams(location.search).has("sesion")) document.querySelector("input").remove();
+    // ?app simula que la página intenta abrir la aplicación de Teams instalada.
+    if (new URLSearchParams(location.search).has("app")) {
+      location.href = "msteams:/l/meetup-join/prueba";
+      window.open("msteams:/l/meetup-join/prueba");
+      document.body.appendChild(document.createElement("iframe")).src = "msteams:/l/meetup-join/prueba";
+    }
+  </script>
+  <pre id="estado">iniciando…</pre>
+  <script type="module">
+    const estado = document.getElementById("estado");
+    const camara = document.getElementById("camara");
+
+    // 1. Como Teams: lista dispositivos y pide cámara y micrófono.
+    const dispositivos = await navigator.mediaDevices.enumerateDevices();
+    const local = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: 1280, height: 720 } });
+    camara.srcObject = local;
+
+    // Nivel de la voz que llega por el "micrófono".
+    const ctx = new AudioContext();
+    await ctx.resume();
+    const medidor = ctx.createAnalyser();
+    ctx.createMediaStreamSource(new MediaStream(local.getAudioTracks())).connect(medidor);
+    const muestras = new Float32Array(medidor.fftSize);
+    let nivelMaximo = 0;
+    setInterval(() => {
+      medidor.getFloatTimeDomainData(muestras);
+      nivelMaximo = Math.max(nivelMaximo, Math.sqrt(muestras.reduce((s, v) => s + v * v, 0) / muestras.length));
+    }, 50);
+
+    // 2. Un participante remoto: su voz llega por una conexión WebRTC, como en una reunión.
+    const voz = ctx.createMediaStreamDestination();
+    const participante = new RTCPeerConnection();
+    const cliente = new RTCPeerConnection();  // la conexión que crearía Teams
+    participante.onicecandidate = (e) => e.candidate && cliente.addIceCandidate(e.candidate);
+    cliente.onicecandidate = (e) => e.candidate && participante.addIceCandidate(e.candidate);
+    cliente.ontrack = (e) => {
+      const altavoz = new Audio();
+      altavoz.srcObject = new MediaStream([e.track]);
+      altavoz.play().catch(() => {});
+    };
+    participante.addTrack(voz.stream.getAudioTracks()[0], voz.stream);
+    await participante.setLocalDescription(await participante.createOffer());
+    await cliente.setRemoteDescription(participante.localDescription);
+    await cliente.setLocalDescription(await cliente.createAnswer());
+    await participante.setRemoteDescription(cliente.localDescription);
+
+    window.prueba = {
+      dispositivos: dispositivos.map((d) => `${d.kind}: ${d.label}`),
+      pistas: () => local.getTracks().map((t) => ({ kind: t.kind, label: t.label, state: t.readyState, settings: t.getSettings() })),
+      video: () => ({ width: camara.videoWidth, height: camara.videoHeight, time: camara.currentTime }),
+      nivel: (reiniciar = false) => {
+        const valor = nivelMaximo;
+        if (reiniciar) nivelMaximo = 0;
+        return valor;
+      },
+      // El participante dice una frase; devuelve cuánto dura.
+      decir: async (texto, idioma = "es", vozNombre = "es_MX-ald-medium") => {
+        const respuesta = await fetch("/tts", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: texto, language: idioma, voice: vozNombre }),
+        });
+        const audio = await ctx.decodeAudioData(await respuesta.arrayBuffer());
+        const fuente = ctx.createBufferSource();
+        fuente.buffer = audio;
+        fuente.connect(voz);
+        fuente.start();
+        return audio.duration;
+      },
+    };
+    estado.textContent = "lista";
+  </script>
+</body>
+</html>

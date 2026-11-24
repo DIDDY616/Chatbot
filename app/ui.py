@@ -8,7 +8,7 @@ import streamlit as st
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")  # no "localhost": en Windows agrega ~2 s por llamada
 LANGUAGES = {"Español": "es", "English": "en", "Français": "fr", "Svenska": "sv", "Deutsch": "de"}
 
-st.set_page_config(page_title="Asistente Tec", page_icon="🎓")
+st.set_page_config(page_title="Asistente Tec")
 st.title("Asistente Tec")
 
 state = st.session_state

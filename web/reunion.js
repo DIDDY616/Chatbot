@@ -25,24 +25,29 @@ function encodeWav(samples, sampleRate) {
   return new Blob([view], { type: "audio/wav" });
 }
 
-// Abre el micrófono (el cable de audio de la reunión) y avisa de lo que oye:
+// Escucha la reunión y avisa de lo que oye. `source` es el identificador del micrófono a
+// abrir (el cable de audio de la reunión; vacío = el predeterminado) o un nodo de audio que
+// ya trae el sonido de la reunión (conexión directa, ver puente.js).
 //   onStart()       alguien empezó a hablar
 //   onSustained()   lleva hablando lo suficiente como para interrumpir al asistente
 //   onPartial(wav)  lo dicho hasta ahora, a mitad de frase
 //   onSegment(wav)  frase completa, lista para transcribir
 // Devuelve una función que cierra la escucha.
-export async function startMeetingListener(audioCtx, deviceId, { onStart, onSustained, onPartial, onSegment }) {
-  // El audio de la reunión ya llega limpio: los filtros del navegador solo lo empeorarían.
-  const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-  if (deviceId) audio.deviceId = { exact: deviceId };
-  const stream = await navigator.mediaDevices.getUserMedia({ audio });
+export async function startMeetingListener(audioCtx, source, { onStart, onSustained, onPartial, onSegment }) {
+  let stream = null;
+  if (!(source instanceof AudioNode)) {
+    // El audio de la reunión ya llega limpio: los filtros del navegador solo lo empeorarían.
+    const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+    if (source) audio.deviceId = { exact: source };
+    stream = await navigator.mediaDevices.getUserMedia({ audio });
+  }
 
   if (!moduleLoaded.has(audioCtx)) moduleLoaded.set(audioCtx, audioCtx.audioWorklet.addModule("escucha-worklet.js"));
   await moduleLoaded.get(audioCtx);
-  const source = audioCtx.createMediaStreamSource(stream);
+  const input = stream ? audioCtx.createMediaStreamSource(stream) : source;
   const segmenter = new AudioWorkletNode(audioCtx, "segmenter", { numberOfOutputs: 1, channelCount: 1, channelCountMode: "explicit" });
   const mute = new GainNode(audioCtx, { gain: 0 });  // mantiene el nodo activo sin que se oiga
-  source.connect(segmenter).connect(mute).connect(audioCtx.destination);
+  input.connect(segmenter).connect(mute).connect(audioCtx.destination);
 
   segmenter.port.onmessage = ({ data }) => {
     if (data.type === "start") onStart?.();
@@ -53,9 +58,9 @@ export async function startMeetingListener(audioCtx, deviceId, { onStart, onSust
 
   return () => {
     segmenter.port.onmessage = null;
-    source.disconnect();
+    input.disconnect(segmenter);
     segmenter.disconnect();
     mute.disconnect();
-    stream.getTracks().forEach((track) => track.stop());
+    stream?.getTracks().forEach((track) => track.stop());
   };
 }

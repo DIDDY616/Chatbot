@@ -264,7 +264,64 @@ def page_test():
 
 # ---------- Historial ----------
 
-RATINGS = {None: "—", "good": "👍 Buena", "bad": "👎 Mala"}
+RATINGS = {None: "Sin valorar", "good": "Buena", "bad": "Mala"}
+
+
+# ---------- Reuniones ----------
+
+MEETING_STATES = {
+    "idle": "Sin reunión", "starting": "Preparando", "joining": "Entrando",
+    "lobby": "En la sala de espera", "needs_user": "Necesita tu ayuda",
+    "in_meeting": "En la reunión", "ended": "Terminada", "error": "Error",
+}
+
+
+def page_meetings():
+    st.title("Reuniones")
+    st.caption("Pega el enlace de una reunión de Teams y pulsa Unirse: el asistente entra solo, como invitado, "
+               "con su avatar y su voz. En la reunión contesta cuando alguien dice su nombre.")
+    profiles = api("GET", "/profiles")
+    status = api("GET", "/meeting")
+    active = status.get("active", False)
+
+    # Es un formulario para que baste pegar el enlace y pulsar Intro.
+    with st.form("unirse", border=False):
+        url = st.text_input("Enlace de la reunión", placeholder="Pega aquí el enlace y pulsa Intro", disabled=active)
+        left, right = st.columns(2)
+        profile_id = left.selectbox("Asistente", list(profiles), format_func=lambda key: profiles[key]["name"], disabled=active)
+        name = right.text_input("Nombre con el que aparece", placeholder="El nombre del asistente", disabled=active)
+        if st.form_submit_button("Unirse", type="primary", disabled=active):
+            if not url.strip():
+                st.warning("Pega primero el enlace de la reunión.")
+            else:
+                api("POST", "/meeting/join", json={"url": url.strip(), "profile": profile_id, "name": name.strip() or None})
+                notify("El asistente está entrando a la reunión.")
+    if st.button("Salir de la reunión", disabled=not active):
+        api("POST", "/meeting/leave")
+        notify("El asistente está saliendo de la reunión.")
+
+    @st.fragment(run_every=2)
+    def show_status():
+        current = api("GET", "/meeting")
+        st.subheader(MEETING_STATES.get(current["state"], current["state"]))
+        if current["state"] != "idle":
+            st.write(current["detail"])
+        if current.get("active"):
+            minutes, seconds = divmod(current["seconds"], 60)
+            st.caption(f"{profiles.get(current['profile'], {}).get('name', current['profile'])} · "
+                       f"aparece como «{current['name']}» · {minutes} min {seconds:02d} s")
+        if current.get("active") != active:
+            st.rerun()  # la reunión empezó o terminó: se actualizan los botones
+
+    show_status()
+    with st.expander("Cómo funciona y qué hacer si no entra"):
+        st.markdown("""
+- Se abren dos ventanas de navegador en esta computadora: una con el avatar y otra con Teams. No las cierres ni las minimices mientras dure la reunión.
+- Entra tú primero a la reunión. Si nadie la ha empezado, el asistente se queda esperando.
+- Cuando te salga el aviso de que quiere unirse, admítelo.
+- El asistente solo entra como invitado. Nunca abre la aplicación de Teams de esta computadora ni usa tus cuentas: si la reunión exige iniciar sesión, cancela la entrada y lo dice aquí.
+- Para preguntarle algo en la reunión, di primero su nombre.
+""")
 
 
 def page_history():
@@ -326,14 +383,15 @@ def page_history():
 
 # ---------- Navegación ----------
 
-st.set_page_config(page_title="Consola · Asistente Tec", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Consola del Asistente Tec", layout="wide")
 pages = [
-    st.Page(page_documents, title="Documentos", icon="📄", url_path="documentos", default=True),
-    st.Page(page_faqs, title="Preguntas frecuentes", icon="❓", url_path="preguntas"),
-    st.Page(page_profiles, title="Asistentes", icon="🧑‍🏫", url_path="asistentes"),
-    st.Page(page_test, title="Probar", icon="🧪", url_path="probar"),
-    st.Page(page_history, title="Historial", icon="📊", url_path="historial"),
-    st.Page("ui.py", title="Chat de voz", icon="💬", url_path="chat"),
+    st.Page(page_meetings, title="Reuniones", url_path="reuniones", default=True),
+    st.Page(page_documents, title="Documentos", url_path="documentos"),
+    st.Page(page_faqs, title="Preguntas frecuentes", url_path="preguntas"),
+    st.Page(page_profiles, title="Asistentes", url_path="asistentes"),
+    st.Page(page_test, title="Probar", url_path="probar"),
+    st.Page(page_history, title="Historial", url_path="historial"),
+    st.Page("ui.py", title="Chat de voz", url_path="chat"),
 ]
 page = st.navigation(pages)
 
@@ -346,7 +404,7 @@ with st.sidebar:
         st.error(str(error))
 
 if notice := st.session_state.pop("notice", None):
-    st.toast(notice, icon="✅")
+    st.toast(notice)
 try:
     page.run()
 except ApiError as error:

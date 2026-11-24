@@ -44,11 +44,22 @@ STOP_WORDS = {
 }
 MAX_STOP_WORDS = 5
 
+# Preguntas para saber si el asistente está oyendo ("TecBot, ¿me escuchas?"). No se buscan en
+# la base de conocimiento: el asistente solo confirma que oye. Sin acentos, como las deja _plain.
+PINGS = {
+    "es": ("me escuchas", "me escucha", "me oyes", "me oye", "estas ahi", "esta ahi", "sigues ahi", "me puedes oir", "me puedes escuchar"),
+    "en": ("can you hear me", "do you hear me", "are you there", "are you still there", "you hear me"),
+    "fr": ("tu m entends", "vous m entendez", "tu es la", "vous etes la", "est ce que tu m entends"),
+    "sv": ("hor du mig", "ar du dar", "kan du hora mig"),
+    "de": ("horst du mich", "horen sie mich", "bist du da", "kannst du mich horen"),
+}
+MAX_PING_WORDS = 7
+
 
 def hear(audio: bytes, language: str | None, names: list[str]) -> dict:
     """Transcribe una frase de la reunión y dice si nombra al asistente.
 
-    Devuelve {"text", "language", "addressed", "question", "stop"}. Se transcribe hasta dos veces:
+    Devuelve {"text", "language", "addressed", "question", "stop", "ping"}. Se transcribe hasta dos veces:
     con la pista Whisper escribe bien el nombre pero alguna vez se lo salta, y sin ella pasa
     lo contrario; con cualquiera de las dos que lo detecte basta.
     """
@@ -56,9 +67,11 @@ def hear(audio: bytes, language: str | None, names: list[str]) -> dict:
     result = voice.transcribe(audio, language, prompt=hint)
     hinted = result["text"]
     # Con audio poco claro Whisper a veces repite la pista en vez de transcribir: eso no cuenta.
-    # (El nombre solo, sin nada más, sí puede haberse dicho de verdad.)
+    # Se reconoce porque trae el principio o el final de la pista, que nadie dice en la reunión;
+    # la pregunta de en medio ("TecBot, ¿me escuchas?") sí puede haberse dicho de verdad.
     found = detect(hinted, names, language)
-    if found["question"] and _plain(hinted) in _plain(hint):
+    intro, reply = _plain(hint.split(".")[0]), _plain(hint.rsplit("—", 1)[1])
+    if intro in _plain(hinted) or reply in _plain(hinted):
         found = detect("", names, language)
     if not found["addressed"]:
         result = voice.transcribe(audio, language)
@@ -118,11 +131,19 @@ def is_stop(question: str, language: str | None = None) -> bool:
             and any(word in core for word in words))
 
 
+def is_ping(question: str, language: str | None = None) -> bool:
+    """¿Solo preguntan si el asistente está oyendo ("¿me escuchas?")?"""
+    words = [_plain(match.group()) for match in WORD.finditer(question)]
+    said = " ".join(words)
+    return len(words) <= MAX_PING_WORDS and any(phrase in said for phrase in PINGS.get(language or "es", PINGS["es"]))
+
+
 def detect(text: str, names: list[str], language: str | None = None) -> dict:
     """Busca alguno de los nombres en el texto.
 
-    Devuelve {"addressed": bool, "question": str, "stop": bool}: la pregunta es el texto sin
-    el nombre, y `stop` indica que no es una pregunta sino una orden de callarse.
+    Devuelve {"addressed": bool, "question": str, "stop": bool, "ping": bool}: la pregunta es
+    el texto sin el nombre, `stop` indica que no es una pregunta sino una orden de callarse, y
+    `ping` que solo quieren saber si el asistente está oyendo.
     """
     words = list(WORD.finditer(text))
     targets = [sound for sound in map(_sound, names) if len(sound) >= 3]
@@ -140,10 +161,10 @@ def detect(text: str, names: list[str], language: str | None = None) -> dict:
                 if candidate[0] <= len(target) * TOLERANCE + 1e-9 and (best is None or candidate < best):
                     best = candidate
     if best is None:
-        return {"addressed": False, "question": "", "stop": False}
+        return {"addressed": False, "question": "", "stop": False, "ping": False}
     _, _, start, end = best
     rest = f"{text[:words[start].start()]} {text[words[end].end():]}"
     rest = re.sub(r"\s+([,.;:!?])", r"\1", re.sub(r"\s+", " ", rest))  # sin espacios antes de un signo
     rest = re.sub(r"[,;:]+(?=[,.;:!?])", "", rest)                     # ni comas dobles donde iba el nombre
     rest = re.sub(r"^[\s,.;:!?—–-]+", "", rest).strip()               # ni signos sueltos al inicio
-    return {"addressed": True, "question": rest, "stop": is_stop(rest, language)}
+    return {"addressed": True, "question": rest, "stop": is_stop(rest, language), "ping": is_ping(rest, language)}

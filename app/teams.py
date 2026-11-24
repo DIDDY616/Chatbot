@@ -1,18 +1,10 @@
-"""Conexión directa a una reunión de Teams, sin OBS ni cables de audio.
+"""Conexión directa a una reunión de Teams, sin OBS ni cables de audio: Playwright abre un
+navegador con el avatar y otro con Teams web, y app/teams_puente.js entrega a Teams la imagen
+y la voz del asistente como cámara y micrófono.
 
-Se abren dos navegadores controlados por programa (Playwright):
-- uno con la página del avatar en modo puente, que produce la imagen y la voz del asistente;
-- otro con Teams en su versión web, que entra a la reunión como un participante más.
-
-app/teams_puente.js, inyectado en la pestaña de Teams, recibe la imagen y la voz por una
-conexión WebRTC local y se las entrega a Teams como si fueran su cámara y su micrófono; el
-audio de la reunión vuelve por la misma conexión para que el asistente escuche.
-
-El asistente entra siempre como invitado y como lo que es, un programa:
-- nunca abre la aplicación de Teams instalada en la computadora (teams_puente.js bloquea los
-  enlaces msteams:) y nunca entra con una cuenta de quien usa la computadora: si el navegador
-  inicia sesión solo, o la reunión exige iniciar sesión, la sesión se cancela;
-- no se oculta la automatización ni se intenta pasar verificaciones.
+El asistente entra siempre como invitado: nunca abre la aplicación de Teams instalada ni usa
+una cuenta de esta computadora (si el navegador inicia sesión solo o la reunión lo exige, se
+cancela), y no se oculta la automatización ni se intenta pasar verificaciones.
 
 Uso desde la API:  join(url, perfil, nombre) / leave() / status()
 """
@@ -37,8 +29,7 @@ INJECT = Path(__file__).with_name("teams_puente.js")
 CHANNELS = [c for c in (os.getenv("TEAMS_BROWSER"), "chrome", "msedge") if c]
 GUEST_ONLY = ("El asistente solo entra como invitado y nunca con una cuenta de esta computadora, "
               "así que canceló la entrada.")
-# Para diagnosticar: si se indica una carpeta, cada pocos segundos se guarda ahí una captura de
-# la ventana de Teams y un texto con la dirección y el estado del puente.
+# Diagnóstico: carpeta donde cada pocos segundos se guarda una captura de Teams y el estado del puente.
 DEBUG_DIR = Path(os.environ["TEAMS_CAPTURAS"]) if os.getenv("TEAMS_CAPTURAS") else None
 
 # Comunes a los dos navegadores: siguen dibujando aunque otra ventana los tape, permiten audio
@@ -244,7 +235,6 @@ class Session(threading.Thread):
 
                 host = urlparse(meeting.url).hostname or ""
                 if (host and not host.endswith(MEETING_HOSTS)) or first_visible(meeting, SIGN_IN):
-                    # Salió de Teams hacia una página de inicio de sesión (de Microsoft o de la organización).
                     self.set("ended", f"Esta reunión exige iniciar sesión ({host}). {GUEST_ONLY}")
                     return
                 # Sin haber escrito un nombre de invitado, un botón de unirse o estar ya dentro significa

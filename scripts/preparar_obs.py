@@ -1,8 +1,7 @@
 """Prepara OBS para usar el avatar como cámara en Teams.
 
-Crea en OBS una colección de escenas y un perfil llamados "Asistente Tec" (1280x720, 30 fps)
-con una captura de la ventana del avatar en modo reunión. No toca las escenas ni los perfiles
-que ya existan. Después, scripts/camara_obs.bat abre OBS con ellos y enciende la cámara virtual.
+Crea una colección de escenas y un perfil "Asistente Tec" (1280x720, 30 fps) que capturan la
+ventana del avatar en modo reunión, sin tocar los que ya existan.
 
 Uso:  python scripts/preparar_obs.py            (no hace nada si ya estaban creados)
       python scripts/preparar_obs.py --rehacer  (vuelve a crear los de "Asistente Tec")

@@ -99,7 +99,7 @@ with history:
         with st.chat_message(msg["role"]):
             st.write(msg["answer"])
             if msg.get("answered") is False:
-                st.caption("⚠️ Sin información en la base de conocimiento")
+                st.caption("Sin información en la base de conocimiento")
             if msg.get("sources"):
                 st.caption("Fuentes: " + ", ".join(msg["sources"]))
             if msg.get("audio"):

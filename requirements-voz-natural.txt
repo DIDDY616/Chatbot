@@ -1,0 +1,5 @@
+# Opcional: voz natural con clonación (Chatterbox). Necesita GPU y unos 3 GB más de VRAM.
+# Instalar antes PyTorch con CUDA:
+#   pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+chatterbox-tts
+soundfile

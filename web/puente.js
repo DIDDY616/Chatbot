@@ -1,10 +1,5 @@
-// Puente con la pestaña de la reunión (conexión directa a Teams, sin OBS ni cables).
-//
-// Esta página produce la "cámara" y el "micrófono" del asistente y los envía por una conexión
-// WebRTC local a la pestaña de Teams, que los entrega a Teams como si fueran dispositivos.
-// En sentido contrario llega el audio de la reunión, que es lo que el asistente escucha.
-// El intercambio de la oferta y la respuesta lo hace el programa que controla los dos
-// navegadores (app/teams.py), llamando a window.puente.offer() y window.puente.finish().
+// Puente con la pestaña de la reunión: envía la imagen y la voz del asistente por WebRTC
+// local y recibe el audio de la reunión. La oferta y la respuesta las intercambia app/teams.py.
 
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -66,9 +61,9 @@ function createCompositor(head, getView) {
     ctx.textAlign = "left";
     const pillWidth = ctx.measureText(label).width + 52;
     ctx.fillStyle = RULE;
-    roundRect(ctx, WIDTH - pillWidth - 29, 23, pillWidth + 2, 42, 7);
+    roundRect(ctx, WIDTH - pillWidth - 29, 23, pillWidth + 2, 42, 2);
     ctx.fillStyle = SURFACE;
-    roundRect(ctx, WIDTH - pillWidth - 28, 24, pillWidth, 40, 6);
+    roundRect(ctx, WIDTH - pillWidth - 28, 24, pillWidth, 40, 2);
     ctx.fillStyle = STATUS_COLORS[status] ?? STATUS_COLORS.loading;
     ctx.beginPath();
     ctx.arc(WIDTH - pillWidth - 8, 44, 6, 0, Math.PI * 2);
@@ -86,7 +81,7 @@ function createCompositor(head, getView) {
       const boxHeight = lines.length * lineHeight + 28;
       const top = HEIGHT - 36 - boxHeight;
       ctx.fillStyle = INK;
-      roundRect(ctx, (WIDTH - boxWidth) / 2, top, boxWidth, boxHeight, 6);
+      roundRect(ctx, (WIDTH - boxWidth) / 2, top, boxWidth, boxHeight, 2);
       ctx.fillStyle = "#ffffff";
       lines.forEach((line, i) => ctx.fillText(line, WIDTH / 2, top + 14 + lineHeight * (i + 0.5)));
     }

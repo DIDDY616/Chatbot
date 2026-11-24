@@ -8,7 +8,7 @@
 //   { type: "segment", samples, sampleRate }  frase terminada (Float32Array mono)
 //   { type: "discard" }                       era un ruido corto, no una frase
 
-const MIN_LEVEL = 0.006;      // nivel mínimo para contar como voz (≈ -44 dB)
+const MIN_LEVEL = 0.006;      // nivel mínimo para contar como voz (unos -44 dB)
 const FLOOR_FACTOR = 3;       // la voz debe superar este múltiplo del ruido de fondo
 const START_MS = 120;         // voz continua para dar por empezada una frase
 const END_MS = 900;           // silencio que da por terminada la frase

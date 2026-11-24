@@ -6,11 +6,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DOCS_DIR = BASE_DIR / "data" / "docs"      # documentos fuente (subcarpeta = categoría)
 CHROMA_DIR = BASE_DIR / "data" / "chroma"  # base vectorial (se regenera con la ingesta)
 LOG_FILE = BASE_DIR / "data" / "historial.jsonl"
-PROFILES_FILE = BASE_DIR / "data" / "perfiles.json"  # perfiles de asistente (editable)
-FAQS_FILE = BASE_DIR / "data" / "faqs.json"          # preguntas frecuentes (editable)
-FEEDBACK_FILE = BASE_DIR / "data" / "valoraciones.json"  # respuestas marcadas como buenas o malas
-EVAL_FILE = BASE_DIR / "tests" / "preguntas.jsonl"   # preguntas de evaluación
-WEB_DIR = BASE_DIR / "web"                 # página del avatar
+PROFILES_FILE = BASE_DIR / "data" / "perfiles.json"
+FAQS_FILE = BASE_DIR / "data" / "faqs.json"
+FEEDBACK_FILE = BASE_DIR / "data" / "valoraciones.json"
+EVAL_FILE = BASE_DIR / "tests" / "preguntas.jsonl"
+WEB_DIR = BASE_DIR / "web"
 
 # LLM: cualquier servidor compatible con la API de OpenAI (Ollama por defecto).
 # Se usa 127.0.0.1 y no "localhost": en Windows localhost agrega ~2 s por conexión.

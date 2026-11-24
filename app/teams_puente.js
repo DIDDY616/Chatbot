@@ -1,11 +1,5 @@
-// Se inyecta en la pestaña de la reunión antes de que cargue Teams (app/teams.py).
-//
-// 1. Recibe por una conexión local la imagen y la voz del asistente (web/puente.js) y se las
-//    entrega a Teams cuando pide la cámara y el micrófono (getUserMedia).
-// 2. Junta el audio que llega de la reunión y lo manda de vuelta, para que el asistente oiga.
-//
-// El navegador se abre con cámara y micrófono falsos, así que Teams ve dispositivos y
-// permisos normales; aquí solo se cambia el contenido de lo que captura.
+// Se inyecta en la pestaña de Teams antes de que cargue (app/teams.py): entrega a Teams la
+// imagen y la voz del asistente como cámara y micrófono, y devuelve el audio de la reunión.
 (() => {
   if (window.__tecPuente) return;
 

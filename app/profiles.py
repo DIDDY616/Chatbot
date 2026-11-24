@@ -15,6 +15,7 @@ DEFAULT_PROFILE = "tecbot"
 class Profile(BaseModel):
     name: str
     description: str = ""
+    role: str = ""                   # su función: para qué sirve y a quién atiende
     personality: str = ""            # tono y forma de hablar; no cambia las reglas del RAG
     greeting: str = ""               # saludo inicial, en el idioma predeterminado
     language: str = "es"
@@ -22,11 +23,26 @@ class Profile(BaseModel):
     voices: dict[str, str] = {}      # voz por idioma, p. ej. {"es": "es_MX-claude-high"}
     avatar: str = ""                 # id de web/avatars.json
     mood: str = "neutral"            # expresión base del avatar
-    categories: list[str] = []       # categorías de documentos que consulta; vacío = todas
+    categories: list[str] = []       # categorías completas que puede consultar
+    documents: list[str] = []        # documentos sueltos que puede consultar, además de las categorías
     wake_words: list[str] = []       # nombres a los que responde en una reunión; vacío = su nombre
 
     def wake_names(self) -> list[str]:
         return self.wake_words or [self.name]
+
+    def access_filter(self) -> dict | None:
+        """Filtro de búsqueda con lo que este asistente puede consultar; None = todo.
+
+        Se aplica antes de que el modelo vea nada: lo que queda fuera no llega a la respuesta.
+        """
+        rules = []
+        if self.categories:
+            rules.append({"category": {"$in": self.categories}})
+        if self.documents:
+            rules.append({"source": {"$in": self.documents}})
+        if not rules:
+            return None
+        return rules[0] if len(rules) == 1 else {"$or": rules}
 
 
 def load() -> dict[str, Profile]:

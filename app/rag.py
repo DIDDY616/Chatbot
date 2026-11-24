@@ -37,6 +37,7 @@ en cada respuesta: saluda solo cuando el usuario te salude.
 contexto esté en otro idioma.
 - Sé claro y breve (2 a 5 frases), en texto plano sin markdown.
 
+Tu función: {role}
 Tu personalidad y forma de hablar: {personality}
 Mantén ese estilo en todas tus respuestas, incluido el trato de tú o de usted, aunque el CONTEXTO \
 o los ejemplos de las reglas usen otro. El estilo solo cambia el tono, nunca los datos ni las reglas.
@@ -72,15 +73,15 @@ def _condense(history: list[dict], question: str) -> str:
     return _chat([{"role": "user", "content": CONDENSE_PROMPT.format(history=text, question=question)}])
 
 
-def retrieve(query: str, k: int = config.TOP_K, categories: list[str] | None = None) -> list[dict]:
-    """Fragmentos más parecidos a la consulta; `categories` limita la búsqueda a esas categorías."""
+def retrieve(query: str, k: int = config.TOP_K, where: dict | None = None) -> list[dict]:
+    """Fragmentos más parecidos a la consulta; `where` limita la búsqueda (ver Profile.access_filter)."""
     col = collection()
     if col.count() == 0:
         return []
     res = col.query(
         query_embeddings=embed([query]),
         n_results=min(k, col.count()),
-        where={"category": {"$in": categories}} if categories else None,
+        where=where,
     )
     return [
         {"text": doc, "source": meta["source"], "category": meta["category"], "distance": dist}
@@ -108,11 +109,12 @@ def answer_stream(session_id: str, message: str, language: str = "es",
     profile = profiles.get(profile_id)
     history = _sessions.setdefault(session_id, [])[-2 * config.MAX_TURNS:]
     query = _condense(history, message) if history else message
-    hits = retrieve(query, categories=profile.categories)
+    hits = retrieve(query, where=profile.access_filter())
     context = "\n\n".join(f"[Fuente: {h['source']}]\n{h['text']}" for h in hits) or "(sin documentos)"
 
     system = SYSTEM_PROMPT.format(
         name=profile.name,
+        role=profile.role or "Resolver dudas generales de los estudiantes.",
         personality=profile.personality or "Amable y clara.",
         marker=NO_ANSWER,
         language=LANGUAGES.get(language, language),

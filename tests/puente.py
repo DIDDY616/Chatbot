@@ -1,10 +1,7 @@
-"""Prueba la conexión directa contra una reunión simulada (sin Teams).
+"""Prueba la conexión directa contra una reunión simulada (web/pruebas/reunion_falsa.html), sin Teams.
 
-Abre los dos navegadores como en una reunión real, pero la "reunión" es
-web/pruebas/reunion_falsa.html. Comprueba que:
-- la página de la reunión recibe la imagen del avatar como cámara;
-- recibe la voz del asistente como micrófono;
-- el asistente oye a un participante y contesta cuando dicen su nombre.
+Comprueba que la reunión recibe la imagen y la voz del asistente como cámara y micrófono, y
+que el asistente oye a un participante y contesta cuando dicen su nombre.
 
 Uso:  python -m tests.puente [carpeta para guardar capturas]     (con la API encendida)
 """
@@ -58,7 +55,6 @@ def main() -> int:
             time.sleep(2)
             check("el video avanza", meeting.evaluate("window.prueba.video().time") > before + 1)
 
-            # Saludo: la voz del asistente debe llegar por el "micrófono" de la reunión.
             meeting.evaluate("window.prueba.nivel(true)")
             avatar.evaluate("window.puente.greet()")
             wait_until(lambda: avatar.evaluate("window.puente.state.status") == "speaking", 30)
@@ -69,13 +65,11 @@ def main() -> int:
                 meeting.screenshot(path=str(shots / "reunion_hablando.png"))
             wait_until(lambda: avatar.evaluate("window.puente.state.status") == "idle", 30)
 
-            # Un participante habla sin nombrarlo: no debe contestar.
             turn = avatar.evaluate("window.puente.state.turn")
             duration = meeting.evaluate("window.prueba.decir('Yo creo que la reunión del martes estuvo muy bien.')")
             time.sleep(duration + 4)
             check("ignora una frase sin su nombre", avatar.evaluate("window.puente.state.turn") == turn)
 
-            # Lo nombran: debe oírlo por el puente y contestar.
             meeting.evaluate("window.prueba.nivel(true)")
             duration = meeting.evaluate("window.prueba.decir('TecBot, ¿qué horario tiene la biblioteca?')")
             started = time.time()

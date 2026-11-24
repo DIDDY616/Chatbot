@@ -15,7 +15,15 @@ LANGUAGES = {"es": "Español", "en": "English", "fr": "Français", "sv": "Svensk
 ENGINES = {"piper": "Piper (rápida)", "chatterbox": "Chatterbox (natural, más lenta)"}
 MOODS = ["neutral", "happy", "love", "sad", "angry", "fear", "disgust", "sleep"]
 FILE_TYPES = ["pdf", "docx", "xlsx", "txt", "md"]
-NEW = "➕ Nuevo…"
+CUSTOM_STYLE = "Personalizado"
+PERSONALITY_STYLES = {
+    "Cercano": "Amigable y cercano. Tutea, usa un tono positivo y frases sencillas.",
+    "Formal": "Formal, preciso y respetuoso. Habla de usted, va directo al dato y evita expresiones coloquiales.",
+    "Breve y directo": "Muy breve. Contesta en una o dos frases, sin rodeos ni cortesías de más.",
+    "Paciente y didáctico": "Paciente y claro. Explica paso a paso, con ejemplos sencillos, y confirma que se entendió.",
+    CUSTOM_STYLE: None,
+}
+NEW = "Nuevo…"
 
 
 class ApiError(Exception):
@@ -139,7 +147,8 @@ def page_faqs():
 
 def page_profiles():
     st.title("Asistentes")
-    st.caption("Cada asistente tiene su nombre, personalidad, voz, personaje y las categorías que consulta.")
+    st.caption("Cada asistente tiene su función, su personalidad, su voz y su personaje, y solo consulta "
+               "la información que le asignes.")
     profiles = api("GET", "/profiles")
     avatars = {a["id"]: a["name"] for a in api("GET", "/avatar/avatars.json")}
     categories = api("GET", "/categories")
@@ -156,10 +165,28 @@ def page_profiles():
 
     left, right = st.columns(2)
     name = left.text_input("Nombre", p.get("name", ""), key=f"{key}_name")
-    description = right.text_input("Descripción", p.get("description", ""), key=f"{key}_description")
+    description = right.text_input("Descripción corta (se ve bajo el nombre)", p.get("description", ""), key=f"{key}_description")
+    role = st.text_input(
+        "Función: para qué sirve y a quién atiende", p.get("role", ""), key=f"{key}_role",
+        placeholder="Por ejemplo: orientar a alumnos de nuevo ingreso sobre inscripciones y becas")
+
+    st.subheader("Personalidad")
+    personality_key = f"{key}_personality"
+    if personality_key not in st.session_state:
+        st.session_state[personality_key] = p.get("personality", "")
+    styles = list(PERSONALITY_STYLES)
+    current_style = next((s for s, text in PERSONALITY_STYLES.items() if text == st.session_state[personality_key]), CUSTOM_STYLE)
+
+    def use_style():
+        text = PERSONALITY_STYLES[st.session_state[f"{key}_style"]]
+        if text:
+            st.session_state[personality_key] = text
+
+    st.selectbox("Estilo", styles, index=styles.index(current_style), key=f"{key}_style", on_change=use_style,
+                 help="Elige uno para empezar y ajusta el texto de abajo si quieres.")
     personality = st.text_area(
-        "Personalidad y forma de hablar", p.get("personality", ""), key=f"{key}_personality",
-        help="Solo cambia el tono. El asistente sigue contestando únicamente con la base de conocimiento.")
+        "Cómo habla", key=personality_key,
+        help="Solo cambia el tono. El asistente sigue contestando únicamente con la información a la que tiene acceso.")
     greeting = st.text_input("Saludo inicial", p.get("greeting", ""), key=f"{key}_greeting")
 
     left, middle, right = st.columns(3)
@@ -183,9 +210,30 @@ def page_profiles():
             if voice:
                 voices[code] = voice
 
-    selected = st.multiselect(
-        "Categorías que consulta (vacío = todas)", sorted(set(categories) | set(p.get("categories", []))),
-        default=p.get("categories", []), key=f"{key}_categories")
+    st.subheader("Acceso a la información")
+    st.caption("Lo que no esté aquí no llega al asistente: no puede citarlo ni usarlo para contestar. "
+               "Sin nada elegido, consulta todo.")
+    documents = api("GET", "/documents")
+    faqs = api("GET", "/faqs")
+    left, right = st.columns(2)
+    selected = left.multiselect(
+        "Categorías completas", sorted(set(categories) | set(p.get("categories", []))),
+        default=p.get("categories", []), key=f"{key}_categories", placeholder="Elige categorías",
+        help="Incluye todos los documentos y preguntas frecuentes de esas categorías, también los que se agreguen después.")
+    sources = sorted({d["source"] for d in documents} | set(p.get("documents", [])))
+    selected_documents = right.multiselect(
+        "Documentos sueltos", sources, default=p.get("documents", []), key=f"{key}_documents",
+        placeholder="Elige documentos",
+        help="Documentos concretos, aunque su categoría no esté elegida.")
+    if selected or selected_documents:
+        allowed = [d["source"] for d in documents if d["category"] in selected or d["source"] in selected_documents]
+        allowed_faqs = sum(1 for f in faqs.values() if f["category"] in selected)
+        st.write(f"Puede consultar {len(allowed)} de {len(documents)} documentos y "
+                 f"{allowed_faqs} de {len(faqs)} preguntas frecuentes.")
+        if allowed:
+            st.caption(", ".join(allowed))
+    else:
+        st.write(f"Puede consultar todo: {len(documents)} documentos y {len(faqs)} preguntas frecuentes.")
 
     wake_words = st.text_input(
         "Nombres a los que responde en una reunión (separados por comas)",
@@ -202,6 +250,7 @@ def page_profiles():
             "name": name.strip(), "description": description.strip(), "personality": personality.strip(),
             "greeting": greeting.strip(), "language": language, "engine": engine, "voices": voices,
             "avatar": avatar, "mood": mood, "categories": selected,
+            "role": role.strip(), "documents": selected_documents,
             "wake_words": [word.strip() for word in wake_words.split(",") if word.strip()],
         })
         notify(f"Asistente «{name.strip()}» guardado.")
@@ -254,7 +303,7 @@ def page_test():
         passed = sum(case["passed"] for case in evaluation)
         st.metric("Preguntas correctas", f"{passed} de {len(evaluation)}")
         table = pd.DataFrame({
-            "Resultado": ["✅" if case["passed"] else "❌" for case in evaluation],
+            "Resultado": ["Pasa" if case["passed"] else "Falla" for case in evaluation],
             "Pregunta": [case["question"] for case in evaluation],
             "Debía contestar": ["Sí" if case["expected_answer"] else "No" for case in evaluation],
             "Respuesta": [case["answer"] for case in evaluation],
@@ -336,7 +385,7 @@ def page_history():
     cells[1].metric("Contestadas", f"{stats['answered'] / stats['total']:.0%}")
     cells[2].metric("Sin respuesta", stats["unanswered"])
     cells[3].metric("Conversaciones", stats["sessions"])
-    cells[4].metric("Valoraciones", f"👍 {stats['good']}  👎 {stats['bad']}")
+    cells[4].metric("Valoraciones", f"{stats['good']} buenas, {stats['bad']} malas")
 
     left, middle, right = st.columns([2, 1, 1])
     left.caption("Preguntas por día")

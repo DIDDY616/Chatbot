@@ -29,9 +29,9 @@ def vram() -> str:
 
 
 print("GPU en uso antes de cargar:", vram())
-voice.transcribe(voice.synthesize("Prueba.", "es"))  # carga Whisper
+voice.transcribe(voice.synthesize("Prueba.", "es"))
 print("GPU con Whisper cargado:   ", vram())
-voice.synthesize("Prueba.", "es", engine="chatterbox")  # carga Chatterbox
+voice.synthesize("Prueba.", "es", engine="chatterbox")
 print("GPU con Chatterbox cargado:", vram(), "\n")
 
 for lang, frase in FRASES.items():

@@ -28,7 +28,7 @@ const PARAMS = new URLSearchParams(location.search);
 const BRIDGED = PARAMS.has("puente");
 
 const state = {
-  meeting: PARAMS.has("reunion") || BRIDGED,  // modo reunión (Teams)
+  meeting: PARAMS.has("reunion") || BRIDGED,
   bargeIn: recall("bargeIn") === "voice" ? "voice" : "name",  // qué interrumpe al asistente en reunión
   micId: recall("micId"),
   outputId: recall("outputId"),
@@ -64,7 +64,7 @@ const statusText = (status) => t(state.meeting && status === "idle" ? "meetingId
 
 async function api(path, options) {
   const resp = await fetch(path, options);
-  if (!resp.ok) throw new Error(`${path} → ${resp.status}`);
+  if (!resp.ok) throw new Error(`${path}: ${resp.status}`);
   return resp;
 }
 
@@ -498,7 +498,7 @@ async function onHeard(wav) {
     const { text, addressed, question, stop, ping } = await transcribeMeeting(wav);
     if (!state.meeting || !text) return;
     // En la configuración se ve lo último que oyó: sirve para saber cómo escribe su nombre.
-    show("heard", `${t("lastHeard")}: «${text}» ${addressed ? "✓" : "✗"} ${t(addressed ? "heardName" : "heardNoName")}`);
+    show("heard", `${t("lastHeard")}: «${text}» (${t(addressed ? "heardName" : "heardNoName")})`);
     const attentive = performance.now() < attentiveUntil;
     if (addressed && stop) silence();                            // "TecBot, espera", "gracias, TecBot"
     else if (addressed && ping) attend(t("hereIAm"));            // "TecBot, ¿me escuchas?"

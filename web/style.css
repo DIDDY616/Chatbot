@@ -1,7 +1,4 @@
-/* Estilo de la página del avatar.
-   Criterios: colores planos y pocos (papel, tinta y un solo acento), superficies sólidas sin
-   desenfoques ni degradados, texto en vez de iconos donde se puede, una sola escala de
-   espacios, y estados al pasar el ratón que cambian de golpe en lugar de desvanecerse. */
+/* Colores planos (papel, tinta y un acento), superficies sólidas y una sola escala de espacios. */
 
 :root {
   --paper: #f3efe6;        /* fondo */
@@ -23,7 +20,7 @@
   --s4: 16px;
   --s5: 24px;
   --s6: 32px;
-  --radius: 6px;
+  --radius: 2px;
 }
 
 * { box-sizing: border-box; }

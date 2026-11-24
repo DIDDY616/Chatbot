@@ -13,5 +13,5 @@ rem   Microfono "CABLE Output" y Altavoz "Hi-Fi Cable Input".
 call "%~dp0avatar_reunion.bat" %*
 if errorlevel 1 exit /b 1
 rem Da tiempo a que exista la ventana del avatar antes de que OBS la busque.
-timeout /t 5 /nobreak >nul
+ping -n 6 127.0.0.1 >nul
 call "%~dp0camara_obs.bat"

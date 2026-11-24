@@ -7,6 +7,9 @@ DOCS_DIR = BASE_DIR / "data" / "docs"      # documentos fuente (subcarpeta = cat
 CHROMA_DIR = BASE_DIR / "data" / "chroma"  # base vectorial (se regenera con la ingesta)
 LOG_FILE = BASE_DIR / "data" / "historial.jsonl"
 PROFILES_FILE = BASE_DIR / "data" / "perfiles.json"  # perfiles de asistente (editable)
+FAQS_FILE = BASE_DIR / "data" / "faqs.json"          # preguntas frecuentes (editable)
+FEEDBACK_FILE = BASE_DIR / "data" / "valoraciones.json"  # respuestas marcadas como buenas o malas
+EVAL_FILE = BASE_DIR / "tests" / "preguntas.jsonl"   # preguntas de evaluación
 WEB_DIR = BASE_DIR / "web"                 # página del avatar
 
 # LLM: cualquier servidor compatible con la API de OpenAI (Ollama por defecto).

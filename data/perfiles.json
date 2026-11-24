@@ -6,7 +6,13 @@
     "greeting": "¡Hola! Soy TecBot, tu asistente virtual del Tec. ¿En qué te puedo ayudar?",
     "language": "es",
     "engine": "piper",
-    "voices": {"es": "es_MX-claude-high", "en": "en_US-lessac-medium"},
+    "voices": {
+      "es": "es_MX-claude-high",
+      "en": "en_US-lessac-medium",
+      "fr": "fr_FR-siwis-medium",
+      "sv": "sv_SE-nst-medium",
+      "de": "de_DE-thorsten-medium"
+    },
     "avatar": "brunette",
     "mood": "happy",
     "categories": []
@@ -18,9 +24,15 @@
     "greeting": "Buen día. Soy el asesor académico de ITC. ¿Qué información necesita?",
     "language": "es",
     "engine": "piper",
-    "voices": {"es": "es_MX-ald-medium", "en": "en_US-ryan-medium"},
+    "voices": {
+      "es": "es_MX-ald-medium",
+      "en": "en_US-ryan-medium"
+    },
     "avatar": "avatarsdk",
     "mood": "neutral",
-    "categories": ["ITC", "general"]
+    "categories": [
+      "ITC",
+      "general"
+    ]
   }
 }

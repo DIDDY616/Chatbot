@@ -16,4 +16,5 @@ data/voces_clonadas/
 data/muestras/
 web/avatars/
 data/historial.jsonl
+data/valoraciones.json
 *.log

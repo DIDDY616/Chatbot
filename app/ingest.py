@@ -6,7 +6,7 @@ La primera subcarpeta dentro de data/docs se usa como categoría (p. ej. data/do
 import re
 from pathlib import Path
 
-from . import config
+from . import config, faqs
 from .store import collection, embed
 
 SUPPORTED = {".txt", ".md", ".pdf", ".docx", ".xlsx"}
@@ -33,14 +33,17 @@ def read_file(path: Path) -> str:
         from openpyxl import load_workbook
 
         wb = load_workbook(path, read_only=True, data_only=True)
-        parts = []
-        for ws in wb.worksheets:
-            rows = [
-                " | ".join(str(c) for c in row if c is not None)
-                for row in ws.iter_rows(values_only=True)
-            ]
-            parts.append(f"Hoja: {ws.title}\n" + "\n".join(r for r in rows if r))
-        return "\n\n".join(parts)
+        try:
+            parts = []
+            for ws in wb.worksheets:
+                rows = [
+                    " | ".join(str(c) for c in row if c is not None)
+                    for row in ws.iter_rows(values_only=True)
+                ]
+                parts.append(f"Hoja: {ws.title}\n" + "\n".join(r for r in rows if r))
+            return "\n\n".join(parts)
+        finally:
+            wb.close()  # en modo de solo lectura el archivo queda abierto y Windows no deja borrarlo
     raise ValueError(f"Formato no soportado: {path.name}")
 
 
@@ -86,15 +89,16 @@ def ingest_file(path: Path) -> int:
 
 
 def ingest_all() -> dict[str, int]:
-    """Reindexa todo data/docs y elimina del índice los archivos que ya no existen."""
+    """Reindexa data/docs y las preguntas frecuentes; quita del índice los archivos que ya no existen."""
     config.DOCS_DIR.mkdir(parents=True, exist_ok=True)
     files = [p for p in config.DOCS_DIR.rglob("*") if p.is_file() and p.suffix.lower() in SUPPORTED]
     result = {p.relative_to(config.DOCS_DIR).as_posix(): ingest_file(p) for p in files}
 
     col = collection()
-    indexed = {m["source"] for m in col.get(include=["metadatas"])["metadatas"]}
+    indexed = {m["source"] for m in col.get(include=["metadatas"])["metadatas"] if "faq_id" not in m}
     for gone in indexed - result.keys():
         col.delete(where={"source": gone})
+    faqs.index_all()
     return result
 
 

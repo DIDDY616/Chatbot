@@ -3,6 +3,7 @@
 La voz, el avatar y Teams son capas alrededor de answer().
 """
 import json
+import uuid
 from collections.abc import Iterator
 from datetime import datetime
 
@@ -88,19 +89,21 @@ def retrieve(query: str, k: int = config.TOP_K, categories: list[str] | None = N
 
 
 def answer(session_id: str, message: str, language: str = "es",
-           profile_id: str = profiles.DEFAULT_PROFILE) -> dict:
-    """Respuesta completa: {"answer", "answered", "sources"}."""
+           profile_id: str = profiles.DEFAULT_PROFILE, log: bool = True) -> dict:
+    """Respuesta completa: {"answer", "answered", "sources", "search_query", "chunks"}."""
     event = {}
-    for event in answer_stream(session_id, message, language, profile_id):
+    for event in answer_stream(session_id, message, language, profile_id, log):
         pass
     return {key: value for key, value in event.items() if key != "type"}
 
 
 def answer_stream(session_id: str, message: str, language: str = "es",
-                  profile_id: str = profiles.DEFAULT_PROFILE) -> Iterator[dict]:
+                  profile_id: str = profiles.DEFAULT_PROFILE, log: bool = True) -> Iterator[dict]:
     """Respuesta por partes, para empezar a hablar antes de que el modelo termine.
 
-    Produce eventos {"type": "delta", "text"} y al final {"type": "done", "answer", "answered", "sources"}.
+    Produce eventos {"type": "delta", "text"} y al final {"type": "done", ...} con la respuesta
+    completa, si se pudo contestar, las fuentes, la consulta de búsqueda y los fragmentos usados.
+    `log=False` evita registrar la pregunta en el historial (pruebas y evaluación).
     """
     profile = profiles.get(profile_id)
     history = _sessions.setdefault(session_id, [])[-2 * config.MAX_TURNS:]
@@ -144,8 +147,9 @@ def answer_stream(session_id: str, message: str, language: str = "es",
         "answered": answered,
         "sources": sorted({h["source"] for h in hits}) if answered else [],
     }
-    _log(session_id, profile_id, message, query, language, result)
-    yield {"type": "done", **result}
+    if log:
+        _log(session_id, profile_id, message, query, language, result)
+    yield {"type": "done", **result, "search_query": query, "chunks": hits}
 
 
 def warmup() -> None:
@@ -162,6 +166,7 @@ def _log(session_id: str, profile_id: str, message: str, query: str, language: s
     """Historial en JSONL: base para estadísticas y preguntas sin respuesta en la consola."""
     config.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     entry = {
+        "id": uuid.uuid4().hex[:12],
         "time": datetime.now().isoformat(timespec="seconds"),
         "session": session_id,
         "profile": profile_id,

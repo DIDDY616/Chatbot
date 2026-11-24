@@ -34,6 +34,8 @@ def load() -> dict[str, Profile]:
 
 def get(profile_id: str) -> Profile:
     profiles = load()
+    if profile_id not in profiles and profile_id == DEFAULT_PROFILE:
+        return next(iter(profiles.values()))  # si se borró el predeterminado, vale el primero
     if profile_id not in profiles:
         raise KeyError(f"Perfil desconocido: '{profile_id}'")
     return profiles[profile_id]

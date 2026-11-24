@@ -48,9 +48,14 @@ def _get_whisper():
     return _whisper
 
 
-def transcribe(audio: bytes, language: str | None = None) -> dict:
-    """Audio (wav, webm, mp3...) -> texto. Si no se indica idioma, Whisper lo detecta."""
-    segments, info = _get_whisper().transcribe(io.BytesIO(audio), language=language, vad_filter=True)
+def transcribe(audio: bytes, language: str | None = None, prompt: str | None = None) -> dict:
+    """Audio (wav, webm, mp3...) -> texto. Si no se indica idioma, Whisper lo detecta.
+
+    `prompt` es un texto de ejemplo que orienta a Whisper (p. ej. cómo se escribe un nombre).
+    """
+    segments, info = _get_whisper().transcribe(
+        io.BytesIO(audio), language=language, vad_filter=True, initial_prompt=prompt or None,
+    )
     return {"text": " ".join(s.text.strip() for s in segments).strip(), "language": info.language}
 
 

@@ -23,6 +23,10 @@ class Profile(BaseModel):
     avatar: str = ""                 # id de web/avatars.json
     mood: str = "neutral"            # expresión base del avatar
     categories: list[str] = []       # categorías de documentos que consulta; vacío = todas
+    wake_words: list[str] = []       # nombres a los que responde en una reunión; vacío = su nombre
+
+    def wake_names(self) -> list[str]:
+        return self.wake_words or [self.name]
 
 
 def load() -> dict[str, Profile]:

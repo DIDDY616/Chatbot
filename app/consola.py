@@ -187,6 +187,11 @@ def page_profiles():
         "Categorías que consulta (vacío = todas)", sorted(set(categories) | set(p.get("categories", []))),
         default=p.get("categories", []), key=f"{key}_categories")
 
+    wake_words = st.text_input(
+        "Nombres a los que responde en una reunión (separados por comas)",
+        ", ".join(p.get("wake_words", [])), key=f"{key}_wake_words", placeholder=name or "TecBot",
+        help="En modo reunión solo contesta cuando alguien dice uno de estos nombres. Vacío = su nombre.")
+
     valid_id = bool(profile_id) and profile_id.replace("-", "").replace("_", "").isalnum()
     if is_new and profile_id in profiles:
         st.warning("Ya existe un asistente con ese identificador.")
@@ -197,6 +202,7 @@ def page_profiles():
             "name": name.strip(), "description": description.strip(), "personality": personality.strip(),
             "greeting": greeting.strip(), "language": language, "engine": engine, "voices": voices,
             "avatar": avatar, "mood": mood, "categories": selected,
+            "wake_words": [word.strip() for word in wake_words.split(",") if word.strip()],
         })
         notify(f"Asistente «{name.strip()}» guardado.")
     if not is_new:

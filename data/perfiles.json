@@ -33,6 +33,9 @@
     "categories": [
       "ITC",
       "general"
+    ],
+    "wake_words": [
+      "Asesor"
     ]
   }
 }

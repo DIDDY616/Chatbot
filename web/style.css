@@ -200,6 +200,23 @@ body[data-status="listening"] .mic::after { animation-delay: 0.8s; }
 
 .hint { margin: 0; color: var(--muted); font-size: 0.78rem; opacity: 0.8; }
 
+/* ---------- Modo reunión: vista limpia para capturar la ventana como cámara ---------- */
+
+body.meeting .identity,
+body.meeting .ask,
+body.meeting .hint,
+body.meeting .user-line,
+body.meeting .meta { display: none; }
+
+body.meeting .status { margin-left: auto; }
+body.meeting #settings-open { opacity: 0; }  /* aparece al pasar el ratón por la barra superior */
+body.meeting .topbar:hover #settings-open,
+body.meeting #settings-open:focus-visible { opacity: 1; }
+
+body.meeting #stage::after { height: 34%; }
+body.meeting .dialog { padding-bottom: 30px; }
+body.meeting .subtitle { font-size: clamp(1.2rem, 1rem + 0.9vw, 1.7rem); }
+
 /* ---------- Configuración ---------- */
 
 .settings {
@@ -238,6 +255,7 @@ body[data-status="listening"] .mic::after { animation-delay: 0.8s; }
   background: transparent;
 }
 .secondary:hover { background: rgba(255, 255, 255, 0.08); }
+.heard { margin: 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
 .license { margin: auto 0 0; color: var(--muted); font-size: 0.74rem; }
 
 /* ---------- Pantalla de inicio ---------- */

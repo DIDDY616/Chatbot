@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import config, documents, evaluation, faqs, history, lipsync, profiles, rag, voice
+from . import config, documents, evaluation, faqs, history, lipsync, profiles, rag, voice, wake
 from .ingest import ingest_all
 from .store import collection
 
@@ -104,9 +104,19 @@ class TTSRequest(BaseModel):
 
 
 @app.post("/stt")
-def stt(audio: UploadFile, language: str | None = None):
-    """Audio -> texto. `language` es opcional (es, en, fr, sv, de); sin él se detecta."""
-    return voice.transcribe(audio.file.read(), language)
+def stt(audio: UploadFile, language: str | None = None, wake_profile: str | None = None):
+    """Audio -> texto. `language` es opcional (es, en, fr, sv, de); sin él se detecta.
+
+    Con `wake_profile` (modo reunión) dice además si la frase nombra a ese asistente
+    (`addressed`) y cuál es la pregunta sin el nombre (`question`).
+    """
+    if wake_profile is None:
+        return voice.transcribe(audio.file.read(), language)
+    try:
+        names = profiles.get(wake_profile).wake_names()
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    return wake.hear(audio.file.read(), language, names)
 
 
 @app.post("/tts")

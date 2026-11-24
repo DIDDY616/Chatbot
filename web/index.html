@@ -69,7 +69,17 @@
       </select>
     </label>
     <label><span data-i18n="voice">Voz</span><select id="voice"></select></label>
+    <label><span data-i18n="micDevice">Micrófono</span><select id="mic-device"></select></label>
+    <label><span data-i18n="outputDevice">Salida de audio</span><select id="output-device"></select></label>
     <label class="check"><input id="hands-free" type="checkbox"><span data-i18n="handsFree">Conversación continua: vuelve a escuchar al terminar de hablar</span></label>
+    <label class="check"><input id="meeting" type="checkbox"><span data-i18n="meetingMode">Modo reunión: vista limpia, escucha siempre y solo contesta cuando dicen su nombre</span></label>
+    <label><span data-i18n="bargeIn">En reunión, deja de hablar</span>
+      <select id="barge-in">
+        <option value="name" data-i18n="bargeInName">Solo si dicen su nombre</option>
+        <option value="voice" data-i18n="bargeInVoice">Con cualquier voz</option>
+      </select>
+    </label>
+    <p id="heard" class="heard" hidden></p>
     <button id="new-chat" class="secondary" type="button" data-i18n="newChat">Nueva conversación</button>
     <p id="license" class="license"></p>
   </aside>

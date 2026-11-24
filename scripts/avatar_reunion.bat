@@ -11,7 +11,7 @@ rem tengas Chrome abierto. Esas opciones evitan que el navegador deje de dibujar
 rem cuando otra ventana (Teams, por ejemplo) lo tapa.
 setlocal
 
-set "URL=http://127.0.0.1:8000/avatar/?reunion=1"
+set "URL=http://127.0.0.1:8000/avatar/?reunion=1&auto=1"
 if not "%~1"=="" set "URL=%URL%&perfil=%~1"
 set "DATOS=%LOCALAPPDATA%\AsistenteTec\navegador"
 
@@ -24,7 +24,8 @@ if not exist "%NAVEGADOR%" goto sin_navegador
 
 start "" "%NAVEGADOR%" "--app=%URL%" "--user-data-dir=%DATOS%" --window-size=1280,760 ^
   --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows ^
-  --disable-renderer-backgrounding --disable-background-timer-throttling
+  --disable-renderer-backgrounding --disable-background-timer-throttling ^
+  --autoplay-policy=no-user-gesture-required
 exit /b 0
 
 :sin_navegador

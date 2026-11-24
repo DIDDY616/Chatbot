@@ -15,9 +15,12 @@ function remember(key, value) {
   try { localStorage.setItem(key, value); } catch { /* sin almacenamiento: vale solo esta vez */ }
 }
 
-const CAMERA_Y = 0.28;          // sube al personaje para dejar libre la zona de subtítulos
-const MEETING_CAMERA_Y = 0.14;  // en reunión solo hay subtítulos, así que va más centrado
-const ATTENTIVE_MS = 10000;     // tras oír solo su nombre, espera la pregunta este tiempo
+// Encuadre: normalmente el personaje va arriba para dejar libre la zona del diálogo; en
+// reunión va más cerca y centrado, porque la imagen se ve pequeña en el mosaico de Teams.
+const CAMERA = { cameraY: 0.28, cameraDistance: -0.1 };
+const MEETING_CAMERA = { cameraY: -0.2, cameraDistance: -1.4 };
+const MEETING_TITLE = "Asistente Tec - Reunion";
+const ATTENTIVE_MS = 10000;    // tras oír solo su nombre, espera la pregunta este tiempo
 
 const state = {
   meeting: new URLSearchParams(location.search).has("reunion"),  // modo reunión (Teams)
@@ -384,9 +387,16 @@ async function onRecorded() {
 // El micrófono queda abierto oyendo la reunión. El asistente solo contesta las frases que lo
 // nombran. Mientras habla se calla si lo nombran (o, según la configuración, con cualquier voz).
 
+// En reunión el título de la ventana es fijo: OBS la encuentra por ese título para capturarla
+// (scripts/preparar_obs.py usa el mismo).
+function setTitle() {
+  document.title = state.meeting ? MEETING_TITLE : profile()?.name ?? "Asistente Tec";
+}
+
 async function setMeeting(on) {
   const change = ++meetingChange;
   state.meeting = on;
+  setTitle();
   document.body.classList.toggle("meeting", on);
   $("meeting").checked = on;
   $("hands-free").disabled = on;
@@ -399,7 +409,7 @@ async function setMeeting(on) {
   stopMeeting?.();
   stopMeeting = null;
   if (!head) return;
-  head.opt.cameraY = on ? MEETING_CAMERA_Y : CAMERA_Y;  // también vale para el próximo personaje
+  Object.assign(head.opt, on ? MEETING_CAMERA : CAMERA);  // también vale para el próximo personaje
   head.setView("upper");
   if (state.status === "idle") setStatus("idle");  // la etiqueta de "listo" cambia con el modo
   if (!on) return;
@@ -542,7 +552,7 @@ async function applyProfile(id) {
 
   $("assistant-name").textContent = p.name;
   $("assistant-description").textContent = p.description;
-  document.title = p.name;
+  setTitle();
   $("profile").value = id;
   $("language").value = state.language;
   $("engine").value = state.engine;
@@ -645,8 +655,7 @@ async function start() {
       ttsEndpoint: "",
       lipsyncModules: [],
       cameraView: "upper",
-      cameraY: state.meeting ? MEETING_CAMERA_Y : CAMERA_Y,
-      cameraDistance: -0.1,
+      ...(state.meeting ? MEETING_CAMERA : CAMERA),
       cameraRotateEnable: false,
       modelFPS: 60,
       modelPixelRatio: Math.min(window.devicePixelRatio || 1, 2),
@@ -672,6 +681,9 @@ async function start() {
 }
 
 async function init() {
+  // En la ventana propia del modo reunión, ajusta el tamaño para que la página mida justo
+  // 1280x720 (la imagen de la cámara); en una pestaña normal el navegador lo ignora.
+  if (state.meeting) window.resizeTo(1280 + outerWidth - innerWidth, 720 + outerHeight - innerHeight);
   document.body.classList.toggle("meeting", state.meeting);
   $("meeting").checked = state.meeting;
   $("hands-free").disabled = state.meeting;
@@ -690,6 +702,9 @@ async function init() {
     $("start-progress").textContent = "";
     $("start-button").disabled = false;
     $("start-button").onclick = start;
+    // Con ?auto arranca sin pulsar Comenzar. Solo sirve si el navegador se abrió permitiendo
+    // audio sin interacción, como hace scripts/avatar_reunion.bat.
+    if (new URLSearchParams(location.search).has("auto")) start();
   } catch (error) {
     console.error(error);
     $("start-progress").textContent = `${t("error")} (${error.message})`;

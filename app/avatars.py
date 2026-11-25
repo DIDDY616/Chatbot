@@ -7,7 +7,6 @@ TalkingHead necesita un .glb con esqueleto tipo Mixamo, las 52 formas de ARKit y
 visemas de Oculus. Ready Player Me, Avaturn y Avatar SDK los exportan así.
 """
 import json
-import re
 import threading
 
 from . import config
@@ -35,8 +34,9 @@ def list_all() -> list[dict]:
 
 
 def _slug(name: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-    return slug or "personaje"
+    from .documents import slugify
+
+    return slugify(name, "personaje", 40)
 
 
 def add(name: str, content: bytes, body: str = "F", license_text: str = "") -> dict:

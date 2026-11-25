@@ -163,6 +163,7 @@ Todo se configura en el archivo `.env` de la raíz del proyecto. El instalador l
 | `SESSION_TTL_MINUTES` | `60` | Minutos sin actividad tras los que se olvida una conversación |
 | `MAX_UPLOAD_MB` | `50` | Tamaño máximo de un archivo subido |
 | `LANGUAGE_DETECT_CONFIDENCE` | `0.8` | Qué tan seguro debe estar Whisper para cambiar de idioma solo |
+| `HYBRID_SEARCH` | `true` | Búsqueda por significado y por palabras exactas; `false` vuelve a solo significado |
 | `TEAMS_BROWSER` | (Chrome, luego Edge) | Navegador para entrar a reuniones: `chrome`, `msedge` o `chromium` |
 
 Las variables `LLM_BASE_URL` y `EMBED_BASE_URL` permiten apuntar a un servidor con GPU en lugar de a la misma computadora. Cualquier servidor compatible con la API de OpenAI sirve.

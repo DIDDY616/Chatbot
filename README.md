@@ -8,7 +8,7 @@ Todo corre en una sola computadora, con modelos de código o pesos abiertos, sin
 
 ## Qué hace
 
-- Responde preguntas con una base de conocimiento propia (RAG) y cita de qué documentos sale la respuesta.
+- Responde preguntas con una base de conocimiento propia (RAG) y cita de qué documentos sale la respuesta. Busca por significado y por palabras exactas (siglas, claves de materias, números).
 - Identifica la intención: los saludos y agradecimientos se contestan sin buscar en los documentos.
 - Dice cuando no tiene la información y sugiere validarla con una fuente institucional.
 - Conversa por voz o por texto y recuerda el contexto de la sesión.
@@ -16,7 +16,7 @@ Todo corre en una sola computadora, con modelos de código o pesos abiertos, sin
 - Tiene un avatar 3D con labios sincronizados con la voz; se pueden subir personajes propios.
 - Permite varios asistentes, cada uno con su función, personalidad, voz, personaje y acceso a documentos.
 - Entra a reuniones de Teams como invitado y contesta cuando dicen su nombre.
-- Incluye una consola de administración: documentos en borrador o publicados, preguntas frecuentes, asistentes, personajes, pruebas, historial con valoraciones y reuniones.
+- Incluye una consola de administración: documentos (también importados de páginas web oficiales) en borrador o publicados, preguntas frecuentes, asistentes, personajes, pruebas, historial con valoraciones y reuniones.
 
 ## Instalación rápida
 
@@ -40,7 +40,7 @@ El paso a paso, la instalación manual, la configuración (`.env`) y la solució
 
 ```powershell
 pip install -r requirements-dev.txt
-pytest                      # 121 pruebas unitarias, sin GPU ni modelos (simulados)
+pytest                      # 140 pruebas unitarias, sin GPU ni modelos (simulados)
 ruff check app scripts tests
 ```
 
@@ -57,6 +57,7 @@ Las que usan los modelos reales (evaluación de respuestas, voz, reunión simula
 | [Demostración](docs/demostracion.md) | Guion para mostrar cada requisito del encargo y pruebas que lo respaldan |
 | [Evolución del MVP](docs/evolucion.md) | Recomendaciones para llevarlo a una solución institucional |
 | [Cambios](docs/cambios.md) | Qué se cambió en la limpieza del código y por qué |
+| [Herramientas evaluadas](docs/herramientas.md) | Herramientas externas revisadas: cuáles se integraron y cuáles quedan como recomendación |
 
 ## Estado
 

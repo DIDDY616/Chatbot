@@ -11,7 +11,7 @@ import uuid
 from collections.abc import Iterator
 from datetime import datetime
 
-from . import config, intent, profiles, prompts, publication
+from . import config, intent, keyword, profiles, prompts, publication
 from .prompts import NO_ANSWER
 from .sessions import store as sessions
 from .store import collection, embed
@@ -51,16 +51,35 @@ def retrieve(query: str, k: int = config.TOP_K, where: dict | None = None,
     buscan los fragmentos publicados, que es lo que ven los estudiantes.
     """
     col = collection()
-    if col.count() == 0:
+    total = col.count()
+    if total == 0:
         return []
     if not include_drafts:
         where = publication.visible_to_students(where)
-    res = col.query(query_embeddings=embed([query]), n_results=min(k, col.count()), where=where)
-    return [
-        {"text": doc, "source": meta["source"], "category": meta["category"],
-         "published": meta.get("published", True), "distance": dist}
-        for doc, meta, dist in zip(res["documents"][0], res["metadatas"][0], res["distances"][0])
-    ]
+    wanted = max(k, config.HYBRID_CANDIDATES) if config.HYBRID_SEARCH else k
+    res = col.query(query_embeddings=embed([query]), n_results=min(wanted, total), where=where)
+    found = {
+        chunk_id: {"text": doc, "source": meta["source"], "category": meta["category"],
+                   "published": meta.get("published", True), "distance": dist, "match": "significado"}
+        for chunk_id, doc, meta, dist in zip(res["ids"][0], res["documents"][0], res["metadatas"][0],
+                                             res["distances"][0])
+    }
+    vector_ids = list(found)
+    if not config.HYBRID_SEARCH:
+        return list(found.values())[:k]
+
+    # Búsqueda por palabras sobre los mismos fragmentos permitidos (mismo filtro de acceso y publicación).
+    pool = col.get(where=where, include=["documents", "metadatas"])
+    order = keyword.bm25_rank(query, pool["documents"])[:config.HYBRID_CANDIDATES]
+    keyword_ids = [pool["ids"][i] for i in order]
+    for i in order:
+        chunk_id, meta = pool["ids"][i], pool["metadatas"][i]
+        if chunk_id in found:
+            found[chunk_id]["match"] = "ambas"
+        else:
+            found[chunk_id] = {"text": pool["documents"][i], "source": meta["source"], "category": meta["category"],
+                               "published": meta.get("published", True), "distance": None, "match": "palabras"}
+    return [found[chunk_id] for chunk_id in keyword.rrf([vector_ids, keyword_ids])[:k]]
 
 
 class MarkerFilter:

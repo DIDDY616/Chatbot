@@ -6,6 +6,7 @@ pypdf
 python-docx
 openpyxl
 python-pptx
+trafilatura  # importar páginas web a la base de conocimiento
 streamlit
 requests
 python-multipart

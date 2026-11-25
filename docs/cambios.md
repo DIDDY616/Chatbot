@@ -14,6 +14,16 @@ Qué se cambió y por qué. Cada punto dice qué requisito del encargo cubre o q
 | **Exportar el historial a CSV** | Para los reportes de avance y el análisis de preguntas sin respuesta |
 | **Más formatos**: PowerPoint (`.pptx`) y CSV; los `.txt` guardados en cp1252 se leen bien | Muchos documentos institucionales vienen en presentaciones o en tablas exportadas. Antes un `.txt` del Bloc de notas viejo perdía los acentos |
 
+## Segunda ronda: búsqueda híbrida e importación web
+
+| Cambio | Por qué |
+|---|---|
+| **Búsqueda híbrida** (`app/keyword.py`): por significado y por palabras exactas, combinadas con Reciprocal Rank Fusion | Los vectores confunden siglas, claves de materias y números ("ITC", "TC1001", "480 horas"), que es justo lo que los estudiantes preguntan. Se programó sin librerías y respeta los mismos filtros de acceso y publicación. Se apaga con `HYBRID_SEARCH=false` |
+| **Importar páginas web oficiales** (`app/web_import.py`, con trafilatura) | Lo que más le falta al MVP es información real. Mucha ya está publicada en tec.mx: ahora se pega el enlace y queda como documento en borrador, con la fuente y la fecha. Se probó con la página real de la carrera ITC (6 fragmentos). Si una página se arma con JavaScript, se abre con un navegador sin ventana |
+| **Protección al importar** | Solo se aceptan páginas públicas: nada de localhost ni redes internas, también tras una redirección, para que nadie use el servidor para leer páginas privadas |
+| **Nombres de archivo con acentos corregidos** | "Ingeniería" daba "ingenier-a" en los nombres de archivo y de personajes; ahora da "ingenieria" |
+| **Herramientas evaluadas** ([herramientas.md](herramientas.md)) | Qué se revisó (Kokoro, MuseTalk, LatentSync, rerankers, bot oficial de Teams), qué se integró y qué conviene cuando haya un servidor con GPU |
+
 ## Seguridad
 
 | Cambio | Por qué |
@@ -60,13 +70,13 @@ Qué se cambió y por qué. Cada punto dice qué requisito del encargo cubre o q
 
 | Cambio | Por qué |
 |---|---|
-| **121 pruebas unitarias con pytest** (`tests/unit/`) | Antes solo había scripts que necesitaban GPU, Ollama y la API encendida, así que casi nunca se corrían. Las nuevas simulan el modelo y los embeddings, usan Chroma real en una carpeta temporal y corren en segundos en cualquier computadora |
+| **Pruebas unitarias con pytest** (`tests/unit/`, 140 al final de la segunda ronda) | Antes solo había scripts que necesitaban GPU, Ollama y la API encendida, así que casi nunca se corrían. Las nuevas simulan el modelo y los embeddings, usan Chroma real en una carpeta temporal y corren en segundos en cualquier computadora |
 | **Pruebas con modelos reales en `tests/integracion/`** | Separadas de las unitarias para que `pytest` no dependa de la GPU |
 | **ruff** (`pyproject.toml`) y **GitHub Actions** (`.github/workflows/pruebas.yml`) | Revisión de estilo y pruebas automáticas en cada push, para que un cambio no rompa algo sin que nadie lo note |
 | **Chroma simulado opcional** (`PRUEBAS_CHROMA=simulado`) | En una computadora con poca memoria libre Chroma no puede correr; así las pruebas se pueden correr igual |
 
 ## Lo que se verificó y lo que no
 
-- **Verificado:** las 121 pruebas unitarias pasan (con Chroma simulado: en la laptop donde se hizo la limpieza, Chroma no tenía memoria para correr; ver abajo), ruff sin errores, todo el código compila, la página del avatar carga en Edge sin errores de JavaScript con three.js local, y los pasos 1 y 2 del instalador eligen bien Python y modelos en una RTX 3050 de 6 GB.
+- **Verificado:** las 140 pruebas unitarias pasan (con Chroma simulado: en la laptop donde se hizo la limpieza, Chroma no tenía memoria para correr; ver abajo), ruff sin errores, todo el código compila, la página del avatar carga en Edge sin errores de JavaScript con three.js local, y los pasos 1 y 2 del instalador eligen bien Python y modelos en una RTX 3050 de 6 GB.
 - **No verificado todavía:** las pruebas con los modelos reales (`tests/integracion/`), la voz, el avatar hablando y la entrada a Teams después de estos cambios. Hay que correrlas en una computadora con los modelos instalados antes de dar la limpieza por buena.
 - **Hallazgo:** con muy poca memoria RAM libre (en esa laptop había 1 GB libre, con Android Studio y su emulador abiertos), Chroma se cierra con `access violation`. No es un error del proyecto, pero puede pasar en una demostración; está en los problemas comunes de [instalacion.md](instalacion.md#problemas-comunes).

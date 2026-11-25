@@ -1,5 +1,6 @@
 """Gestión de documentos de la base de conocimiento (para la consola de administración)."""
 import re
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -14,6 +15,12 @@ def clean_name(name: str) -> str:
     if not name or name in (".", ".."):
         raise ValueError("Nombre vacío o no válido")
     return name
+
+
+def slugify(text: str, default: str = "documento", limit: int = 80) -> str:
+    """Texto para nombre de archivo o identificador: "Ingeniería en TC" -> "ingenieria-en-tc"."""
+    plain = "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", "-", plain).strip("-")[:limit].strip("-") or default
 
 
 def _path(source: str) -> Path:

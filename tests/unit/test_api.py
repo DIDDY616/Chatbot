@@ -93,7 +93,7 @@ def test_personajes_propios(client):
     glb = b"glTF" + b"\x02\x00\x00\x00" + b"\x00" * 16
     saved = client.post("/avatars", files={"file": ("ana.glb", io.BytesIO(glb))},
                         data={"name": "Ana Pérez", "body": "F", "license": "propio"}).json()
-    assert saved["id"] == "propio-ana-p-rez" and (config.AVATARS_DIR / saved["file"]).exists()
+    assert saved["id"] == "propio-ana-perez" and (config.AVATARS_DIR / saved["file"]).exists()
     listed = client.get("/avatar/avatars.json").json()
     assert listed[-1]["id"] == saved["id"] and listed[-1]["custom"] is True
     assert len(listed) == 6  # los cinco de ejemplo más el propio

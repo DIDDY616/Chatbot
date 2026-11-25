@@ -28,6 +28,7 @@ ignore = [
     "B008",   # Depends()/Form() en los parámetros es el estilo de FastAPI
     "SIM105", # try/except/pass se lee mejor que contextlib.suppress en estos casos
     "UP017",  # datetime.UTC no existe en 3.10
+    "SIM905", # listas de palabras escritas como texto se leen y editan mejor (intent.py, keyword.py)
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -60,6 +60,8 @@ Todo corre en una computadora. Las tres caras del sistema (página del avatar, c
 | RAG | `app/rag.py`, `app/prompts.py`, `app/store.py`, `app/ingest.py` | Parte los documentos en fragmentos, los indexa, recupera los más parecidos a la pregunta y arma la respuesta. Las instrucciones al modelo están aparte, en `prompts.py` |
 | Sesiones | `app/sessions.py` | Memoria de la conversación, con límite de turnos, caducidad y tope de sesiones |
 | Publicación | `app/publication.py` | Borradores y publicación de documentos y preguntas frecuentes |
+| Búsqueda por palabras | `app/keyword.py` | BM25 y fusión con la búsqueda por vectores |
+| Importación web | `app/web_import.py` | Descarga páginas públicas y guarda su texto como documento en borrador |
 | Voz | `app/voice.py`, `app/lipsync.py` | Voz a texto, texto a voz y cálculo de los movimientos de labios |
 | Perfiles | `app/profiles.py` | Asistentes con función, personalidad, voz, personaje y acceso a documentos |
 | Personajes | `app/avatars.py` | Personajes de ejemplo y los subidos desde la consola |
@@ -87,7 +89,7 @@ sequenceDiagram
     API->>API: Identificar la intención
     Note over API: Si es un saludo o un agradecimiento,<br>contesta sin buscar
     API->>LLM: Completar la pregunta con el contexto de la sesión
-    API->>V: Buscar fragmentos publicados (solo los que el asistente puede consultar)
+    API->>V: Buscar fragmentos publicados por significado y por palabras (solo los que el asistente puede consultar)
     V-->>API: Fragmentos y sus fuentes
     API->>LLM: Pregunta, fragmentos, función y personalidad
     LLM-->>W: Respuesta, frase por frase
@@ -104,6 +106,7 @@ Detalles que importan:
 - **Preguntas de seguimiento.** Antes de buscar, el modelo reescribe la pregunta para que se entienda sola. Así "¿y si ya pasó esa fecha?" se busca como una pregunta completa.
 - **Respuesta por partes.** La voz empieza con la primera frase mientras el modelo sigue escribiendo las demás.
 - **Cuando no sabe.** Si los fragmentos no contestan la pregunta, el asistente lo dice y sugiere validar con una fuente institucional. Esa respuesta se marca como no contestada en el historial.
+- **Búsqueda híbrida.** Se busca por significado (vectores de bge-m3) y por palabras exactas (BM25, `app/keyword.py`), y las dos listas se combinan con Reciprocal Rank Fusion. Así una pregunta por "TC1001" o "ITC" encuentra el fragmento que tiene esa clave aunque los vectores lo confundan. Se apaga con `HYBRID_SEARCH=false`.
 - **Acceso por asistente y borradores.** El filtro de documentos y el de "solo publicados" se aplican al buscar, antes de que el modelo vea nada. Lo que un asistente no puede consultar, o lo que sigue en borrador, no llega a su respuesta. La consola puede incluir los borradores para probar.
 - **Memoria de la sesión.** Cada conversación guarda solo los turnos que se le mandan al modelo y se olvida tras una hora sin uso (`SESSION_TTL_MINUTES`).
 - **Labios.** El servidor calcula los movimientos a partir del audio ya sintetizado, con los tiempos de cada palabra.
@@ -136,6 +139,8 @@ Los cambios aplican de inmediato, sin reiniciar nada. Los vectores se calculan a
 | Voz natural (opcional) | Chatterbox Multilingual | MIT | Más humana y permite clonar una voz de referencia |
 | Avatar 3D | TalkingHead sobre three.js (incluidos en `web/vendor/`) | MIT | Corre en el navegador, sin generar video en el servidor ni depender de internet |
 | Lectura de documentos | pypdf, python-docx, openpyxl, python-pptx | BSD / MIT | PDF, Word, Excel y PowerPoint |
+| Importar páginas web | trafilatura (y Playwright para páginas con JavaScript) | Apache 2.0 | Extrae el texto principal sin menús ni pies de página |
+| Búsqueda por palabras | BM25 y Reciprocal Rank Fusion, sin librerías | Propio | Encuentra siglas, claves y números que los vectores confunden |
 | Pruebas | pytest y ruff | MIT | Pruebas unitarias sin modelos y revisión de estilo |
 | API | FastAPI | MIT | |
 | Consola | Streamlit | Apache 2.0 | Interfaz de administración con poco código |

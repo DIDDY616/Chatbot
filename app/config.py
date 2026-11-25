@@ -91,6 +91,9 @@ LANGUAGE_DETECT_CONFIDENCE = float(os.getenv("LANGUAGE_DETECT_CONFIDENCE", "0.8"
 CHUNK_SIZE = 1000    # caracteres por fragmento
 CHUNK_OVERLAP = 150
 TOP_K = 5            # fragmentos recuperados por pregunta
+# Búsqueda híbrida: vectores + palabras exactas (app/keyword.py). "false" vuelve a solo vectores.
+HYBRID_SEARCH = os.getenv("HYBRID_SEARCH", "true").lower() not in ("0", "false", "no")
+HYBRID_CANDIDATES = _int("HYBRID_CANDIDATES", 20)  # candidatos de cada búsqueda antes de combinarlas
 MAX_TURNS = 4        # turnos previos que se envían al LLM (cuidar la ventana de contexto)
 
 # ---------- Sesiones ----------

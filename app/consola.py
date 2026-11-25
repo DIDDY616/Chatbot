@@ -117,6 +117,30 @@ def page_documents():
             state = "publicados" if publish_now else "en borrador"
             notify(f"Documentos indexados y {state}. " + "; ".join(results))
 
+    with st.expander("Importar desde páginas web"):
+        st.caption("Pega enlaces de páginas oficiales (uno por línea). Se guarda solo el texto principal, "
+                   "con la fuente y la fecha al inicio, como documento en borrador para revisarlo.")
+        urls = st.text_area("Enlaces", placeholder="https://tec.mx/es/...", key="import_urls")
+        import_category = category_input(categories, "import")
+        import_publish = st.checkbox("Publicar de inmediato", value=False, key="import_publish")
+        links = [u.strip() for u in urls.splitlines() if u.strip()]
+        if st.button("Importar", type="primary", disabled=not links or not import_category):
+            results, failures = [], []
+            with st.spinner("Descargando páginas…"):
+                for link in links:
+                    try:
+                        saved = api("POST", "/documents/from-url", timeout=300,
+                                    json={"url": link, "category": import_category, "publish": import_publish})
+                        results.append(f"{saved['title']}: {saved['chunks']} fragmentos")
+                    except ApiError as error:
+                        failures.append(f"{link}: {error}")
+            if results and not failures:
+                notify("Páginas importadas. " + "; ".join(results))
+            if results:  # con errores no se recarga la página, para que se lean
+                st.success("Páginas importadas. " + "; ".join(results))
+            for failure in failures:
+                st.error(failure)
+
     docs = api("GET", "/documents")
     if not docs:
         st.info("Todavía no hay documentos.")
@@ -391,10 +415,15 @@ def page_test():
         st.caption(f"Intención: {INTENTS.get(result.get('intent'), result.get('intent'))} · "
                    f"consulta de búsqueda: {result['search_query']}")
         st.subheader(f"Fragmentos consultados ({len(result['chunks'])})")
+        st.caption("Cada fragmento dice cómo se encontró: por significado (vectores), por palabras exactas "
+                   "(siglas, claves, números) o por ambas.")
         for chunk in result["chunks"]:
-            similarity = max(0.0, 1 - chunk["distance"])
+            found_by = {"significado": "por significado", "palabras": "por palabras",
+                        "ambas": "por significado y palabras"}.get(chunk.get("match"), "")
+            similarity = f"parecido {max(0.0, 1 - chunk['distance']):.0%}" if chunk.get("distance") is not None else ""
+            parts = [chunk["source"], chunk["category"], found_by, similarity]
             state = "" if chunk.get("published", True) else "  ·  BORRADOR"
-            with st.expander(f"{chunk['source']}  ·  {chunk['category']}  ·  parecido {similarity:.0%}{state}"):
+            with st.expander("  ·  ".join(p for p in parts if p) + state):
                 st.text(chunk["text"])
 
     st.divider()

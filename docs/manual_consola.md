@@ -32,6 +32,18 @@ flowchart LR
 4. Deja sin marcar **Publicar de inmediato** si quieres probarlo primero (lo recomendado).
 5. Pulsa subir. El documento se guarda, se parte en fragmentos y se indexa.
 
+### Importar páginas web oficiales
+
+Mucha información (programas, servicios, becas) ya está en páginas del Tec. En **Documentos** → **Importar desde páginas web**, pega uno o varios enlaces, uno por línea, y elige la categoría.
+
+- Se guarda solo el texto principal, sin menús ni pies de página, como un documento `web-<título>.md` en borrador, con la dirección y la fecha de consulta al inicio.
+- Si la página se arma con JavaScript y trae poco texto, se abre con Edge o Chrome sin ventana y se extrae de nuevo.
+- Revisa sus fragmentos antes de publicar: algunas páginas traen restos del menú o casi no tienen texto (por ejemplo, las que solo son un buscador).
+- Para PDF o Word oficiales (planes de estudio, reglamentos), descárgalos y súbelos como documento.
+- Por seguridad solo se aceptan páginas públicas de internet, no direcciones internas de la red.
+
+Para actualizar una página importada, vuelve a importarla: reemplaza al documento anterior.
+
 ### Probarlo y publicarlo
 
 1. En **Probar**, con **Con borradores** activado, haz una pregunta que el documento debería contestar. Los fragmentos en borrador aparecen marcados como `BORRADOR`.
@@ -146,7 +158,7 @@ Para hacer una pregunta y ver qué pasa por dentro **antes de publicar** un camb
 - la respuesta;
 - la intención detectada (consulta, saludo, despedida o agradecimiento);
 - la pregunta tal como se buscó, ya completada con el contexto;
-- los fragmentos que se usaron, con su fuente, qué tan parecidos son a la pregunta y si están en borrador.
+- los fragmentos que se usaron, con su fuente, si se encontraron por significado, por palabras exactas o por ambas, qué tan parecidos son a la pregunta y si están en borrador.
 
 El interruptor **Con borradores** está activado por omisión: así se ve cómo contestaría el asistente si publicaras lo pendiente. Desactívalo para ver exactamente lo que ve un estudiante.
 

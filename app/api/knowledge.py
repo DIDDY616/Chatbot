@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from .. import documents, faqs, publication
+from .. import documents, faqs, publication, web_import
 from ..ingest import ingest_all
 from .security import require_admin
 
@@ -21,6 +21,23 @@ def upload_document(file: UploadFile, category: str = Form("general"), publish: 
         return documents.save(file.filename or "", category, file.file.read(), publish)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
+
+
+class UrlImport(BaseModel):
+    url: str
+    category: str = "general"
+    publish: bool = False
+
+
+@router.post("/documents/from-url")
+def import_document(req: UrlImport):
+    """Descarga una página web pública y la guarda como documento (en borrador por omisión)."""
+    try:
+        return web_import.import_url(req.url, req.category, req.publish)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    except Exception as e:  # noqa: BLE001  (caída del sitio, tiempo agotado, etc.)
+        raise HTTPException(502, f"No se pudo descargar la página: {e}") from e
 
 
 @router.delete("/documents")

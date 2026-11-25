@@ -56,7 +56,23 @@ def transcribe(audio: bytes, language: str | None = None, prompt: str | None = N
     segments, info = _get_whisper().transcribe(
         io.BytesIO(audio), language=language, vad_filter=True, initial_prompt=prompt or None,
     )
-    return {"text": " ".join(s.text.strip() for s in segments).strip(), "language": info.language}
+    return {
+        "text": " ".join(s.text.strip() for s in segments).strip(),
+        "language": info.language,
+        "language_probability": round(float(info.language_probability or 0.0), 3),
+    }
+
+
+def detect_supported(result: dict, current: str) -> str:
+    """Idioma con el que conviene contestar tras transcribir sin idioma fijo.
+
+    Solo se cambia si Whisper detectó uno de los cinco idiomas del asistente con suficiente
+    seguridad; en frases muy cortas a veces confunde el español con el portugués o el gallego.
+    """
+    detected = result.get("language")
+    if detected in LANGUAGE_CODES and result.get("language_probability", 0) >= config.LANGUAGE_DETECT_CONFIDENCE:
+        return detected
+    return current
 
 
 def word_times(audio: bytes, language: str) -> list[tuple[str, float, float]]:

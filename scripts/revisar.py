@@ -14,9 +14,11 @@ import requests
 
 from app import config
 
-MIN_VRAM_GB = 12  # la configuración por omisión ocupa unos 11.7 GB
+# Memoria de video aproximada que pide cada modelo de lenguaje junto con bge-m3 y Whisper.
+VRAM_BY_MODEL = {"gemma3:12b": 12, "gemma3:4b": 6, "gemma3:1b": 4}
+MIN_VRAM_GB = VRAM_BY_MODEL.get(config.LLM_MODEL, 12)
 MODELS = [config.LLM_MODEL, config.EMBED_MODEL]
-PACKAGES = ["fastapi", "chromadb", "faster_whisper", "piper", "streamlit", "playwright"]
+PACKAGES = ["fastapi", "chromadb", "faster_whisper", "piper", "streamlit", "playwright", "pptx"]
 BROWSERS = [
     r"%ProgramFiles%\Google\Chrome\Application\chrome.exe",
     r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe",
@@ -33,10 +35,22 @@ def report(level: str, text: str) -> None:
     print(f"{level:6s} {text}")
 
 
+def check_config() -> None:
+    if config.ENV_FILE.exists():
+        report("OK", f".env encontrado: modelo {config.LLM_MODEL}, reconocimiento de voz {config.WHISPER_MODEL} "
+                     f"en {config.WHISPER_DEVICE}")
+    else:
+        report("AVISO", "no hay .env: se usan los valores por omisión (copia .env.example como .env)")
+    if not config.ADMIN_TOKEN:
+        report("AVISO", "sin ADMIN_TOKEN: la consola no pide clave (defínela en .env si otros pueden llegar a esta computadora)")
+
+
 def check_python() -> None:
     version = sys.version_info
-    level = "OK" if version >= (3, 10) else "FALTA"
-    report(level, f"Python {version.major}.{version.minor}.{version.micro} (se necesita 3.10 o posterior)")
+    official = "MSC" in sys.version
+    level = "OK" if (3, 10) <= version[:2] < (3, 14) and official else "FALTA"
+    report(level, f"Python {version.major}.{version.minor}.{version.micro}"
+                  f"{'' if official else ' (no es el de python.org)'}: se necesita 3.10 a 3.13 de python.org")
     for name in PACKAGES:
         try:
             importlib.import_module(name)
@@ -84,8 +98,11 @@ def check_files() -> None:
     if others:
         report("AVISO", f"sin voz para: {', '.join(others)} (idiomas opcionales)")
 
-    avatars = list((config.WEB_DIR / "avatars").glob("*.glb"))
+    avatars = list(config.AVATARS_DIR.glob("*.glb"))
     report("OK" if avatars else "FALTA", f"personajes 3D: {len(avatars)}")
+    three = config.WEB_DIR / "vendor" / "three" / "build" / "three.module.js"
+    report("OK" if three.exists() else "FALTA", "three.js local" + ("" if three.exists() else
+                                                                    ": ejecuta python -m scripts.vendorizar_three"))
 
     documents = [p for p in config.DOCS_DIR.rglob("*") if p.is_file()]
     report("OK" if documents else "AVISO", f"documentos en la base de conocimiento: {len(documents)}")
@@ -104,7 +121,7 @@ def check_browser() -> None:
 
 
 def main() -> int:
-    for check in (check_python, check_gpu, check_ollama, check_files, check_browser):
+    for check in (check_config, check_python, check_gpu, check_ollama, check_files, check_browser):
         check()
     print()
     print("Todo listo." if not missing else f"Faltan {missing} cosas indispensables (las marcadas con FALTA).")

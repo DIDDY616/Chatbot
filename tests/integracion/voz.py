@@ -1,6 +1,6 @@
 """Prueba de voz ida y vuelta: Piper genera audio y Whisper lo transcribe.
 
-Uso:  python -m tests.voz
+Uso:  python -m tests.integracion.voz
 """
 import sys
 import time

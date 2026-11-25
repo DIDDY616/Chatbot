@@ -7,7 +7,7 @@ El asistente entra a una reunión de Teams como un participante más, con su ava
 ## Cómo usarlo
 
 1. Crea la reunión en Teams y entra tú primero. Si nadie la ha empezado, el asistente se queda esperando.
-2. En la consola, sección **Reuniones**, pega el enlace y pulsa Intro.
+2. En la consola, sección **Reuniones**, pega el enlace y pulsa Intro. Si definiste `ADMIN_TOKEN`, la consola te pide la clave antes.
 3. Se abren dos ventanas de navegador en la computadora del asistente: una con el avatar y otra con Teams. No las cierres ni las minimices.
 4. Cuando Teams avise que el asistente quiere unirse, admítelo.
 5. Para preguntarle, di primero su nombre: "TecBot, ¿qué horario tiene la biblioteca?".
@@ -66,7 +66,7 @@ No se usa OBS, ni cámaras o micrófonos virtuales, ni cuentas o permisos de Mic
 | Oye a los participantes | Sí: transcribió frases dichas desde otro dispositivo |
 | Reconoce su nombre y contesta en la reunión | Sí |
 | Permanece estable | Unos 8 minutos seguidos sin caerse |
-| Entrada, saludo y salida contra una reunión simulada | Automatizado en `tests/puente.py` |
+| Entrada, saludo y salida contra una reunión simulada | Automatizado en `tests/integracion/puente.py` |
 | Bloqueo de la aplicación de Teams y regla de solo invitado | Probado con la reunión simulada |
 
 ## Límites conocidos
@@ -78,7 +78,6 @@ No se usa OBS, ni cámaras o micrófonos virtuales, ni cuentas o permisos de Mic
 - **Pausas largas.** Una pausa de casi un segundo a media pregunta la corta en dos.
 - **No distingue quién habla.** Todas las voces llegan mezcladas.
 - **Después de los últimos cambios** (regla de solo invitado y estilo nuevo) no se repitió la prueba en una reunión real, solo en la simulada.
+- **Idioma fijo en la reunión.** En modo reunión el asistente escucha en el idioma del perfil; la detección automática de idioma solo aplica en la página del avatar.
 
-## Alternativa con OBS
-
-Antes de la conexión directa se preparó una ruta con cámara virtual: `scripts/reunion_teams.bat` abre el avatar en modo reunión y OBS con una escena que lo captura. Requiere OBS y dos cables de audio virtuales. Se comprobó la imagen por la cámara virtual; el audio por cables no se probó. Queda como respaldo.
+La ruta anterior con OBS y cables de audio virtuales se retiró del proyecto: la conexión directa la sustituye y el audio por cables nunca llegó a probarse. Queda en el historial de git si alguna vez hace falta.

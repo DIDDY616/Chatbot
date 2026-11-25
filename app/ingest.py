@@ -3,19 +3,39 @@
 Uso:  python -m app.ingest
 La primera subcarpeta dentro de data/docs se usa como categoría (p. ej. data/docs/ITC/plan.pdf).
 """
+import csv
+import io
 import re
 from pathlib import Path
 
-from . import config, faqs
+from . import config, faqs, publication
 from .store import collection, embed
 
-SUPPORTED = {".txt", ".md", ".pdf", ".docx", ".xlsx"}
+SUPPORTED = {".txt", ".md", ".pdf", ".docx", ".xlsx", ".csv", ".pptx"}
+TEXT_ENCODINGS = ("utf-8-sig", "cp1252", "latin-1")  # el Bloc de notas viejo guarda en cp1252
+
+
+def _decode(data: bytes) -> str:
+    for encoding in TEXT_ENCODINGS:
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="ignore")
 
 
 def read_file(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix in (".txt", ".md"):
-        return path.read_text(encoding="utf-8", errors="ignore")
+        return _decode(path.read_bytes())
+    if suffix == ".csv":
+        text = _decode(path.read_bytes())
+        try:
+            dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\t|")
+        except csv.Error:
+            dialect = csv.excel
+        rows = [" | ".join(cell.strip() for cell in row if cell.strip()) for row in csv.reader(io.StringIO(text), dialect)]
+        return "\n".join(row for row in rows if row)
     if suffix == ".pdf":
         from pypdf import PdfReader
 
@@ -44,6 +64,16 @@ def read_file(path: Path) -> str:
             return "\n\n".join(parts)
         finally:
             wb.close()  # en modo de solo lectura el archivo queda abierto y Windows no deja borrarlo
+    if suffix == ".pptx":
+        from pptx import Presentation
+
+        slides = []
+        for number, slide in enumerate(Presentation(str(path)).slides, 1):
+            texts = [shape.text_frame.text.strip() for shape in slide.shapes
+                     if shape.has_text_frame and shape.text_frame.text.strip()]
+            if texts:
+                slides.append(f"Diapositiva {number}\n" + "\n".join(texts))
+        return "\n\n".join(slides)
     raise ValueError(f"Formato no soportado: {path.name}")
 
 
@@ -70,20 +100,31 @@ def chunk(text: str, size: int = config.CHUNK_SIZE, overlap: int = config.CHUNK_
     return chunks
 
 
-def ingest_file(path: Path) -> int:
-    """Indexa (o reindexa) un archivo. Devuelve el número de fragmentos."""
+def source_of(path: Path) -> tuple[str, str]:
+    """(fuente, categoría) de un archivo dentro de data/docs."""
     rel = path.relative_to(config.DOCS_DIR).as_posix()
-    category = rel.split("/")[0] if "/" in rel else "general"
+    return rel, rel.split("/")[0] if "/" in rel else "general"
+
+
+def ingest_file(path: Path) -> int:
+    """Indexa (o reindexa) un archivo. Devuelve el número de fragmentos.
+
+    Los vectores se calculan antes de tocar el índice: si el modelo falla, la versión
+    anterior del documento sigue disponible.
+    """
+    rel, category = source_of(path)
+    chunks = chunk(read_file(path))
+    vectors = embed(chunks) if chunks else []
+    published = publication.is_published(rel)
     col = collection()
     col.delete(where={"source": rel})
-    chunks = chunk(read_file(path))
     if not chunks:
         return 0
     col.add(
         ids=[f"{rel}#{i}" for i in range(len(chunks))],
         documents=chunks,
-        embeddings=embed(chunks),
-        metadatas=[{"source": rel, "category": category} for _ in chunks],
+        embeddings=vectors,
+        metadatas=[{"source": rel, "category": category, "published": published} for _ in chunks],
     )
     return len(chunks)
 
@@ -92,7 +133,7 @@ def ingest_all() -> dict[str, int]:
     """Reindexa data/docs y las preguntas frecuentes; quita del índice los archivos que ya no existen."""
     config.DOCS_DIR.mkdir(parents=True, exist_ok=True)
     files = [p for p in config.DOCS_DIR.rglob("*") if p.is_file() and p.suffix.lower() in SUPPORTED]
-    result = {p.relative_to(config.DOCS_DIR).as_posix(): ingest_file(p) for p in files}
+    result = {source_of(p)[0]: ingest_file(p) for p in files}
 
     col = collection()
     indexed = {m["source"] for m in col.get(include=["metadatas"])["metadatas"] if "faq_id" not in m}

@@ -18,3 +18,6 @@ web/avatars/
 data/historial.jsonl
 data/valoraciones.json
 *.log
+
+# Personajes subidos desde la consola (sus .glb están en web/avatars/, que tampoco se versiona)
+data/personajes.json

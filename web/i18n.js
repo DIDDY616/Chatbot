@@ -3,6 +3,7 @@ export const LANGUAGES = { es: "Español", en: "English", fr: "Français", sv: "
 
 export const TEXTS = {
   es: {
+    autoLanguage: "Detectar el idioma al hablar", useful: "¿Te sirvió la respuesta?", notUseful: "No me sirvió", thanks: "Gracias por tu opinión",
     idle: "Listo", listening: "Escuchando…", thinking: "Pensando…", speaking: "Hablando", loading: "Cargando…",
     transcribing: "Entendiendo…", preparing: "Preparando la voz…", loadingAvatar: "Cargando personaje",
     placeholder: "Escribe tu pregunta", hint: "Pulsa Hablar y di tu pregunta; se envía sola cuando terminas.",
@@ -22,6 +23,7 @@ export const TEXTS = {
     lastHeard: "Lo último que oyó", heardName: "oyó su nombre", heardNoName: "no oyó su nombre",
   },
   en: {
+    autoLanguage: "Detect the language when speaking", useful: "Was this answer helpful?", notUseful: "Not helpful", thanks: "Thanks for your feedback",
     idle: "Ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking", loading: "Loading…",
     transcribing: "Understanding…", preparing: "Preparing the voice…", loadingAvatar: "Loading character",
     placeholder: "Type your question", hint: "Press Talk and ask your question; it is sent when you finish.",
@@ -41,6 +43,7 @@ export const TEXTS = {
     lastHeard: "Last thing heard", heardName: "heard its name", heardNoName: "did not hear its name",
   },
   fr: {
+    autoLanguage: "Détecter la langue à l'oral", useful: "Cette réponse vous a-t-elle aidé ?", notUseful: "Pas utile", thanks: "Merci pour votre avis",
     idle: "Prêt", listening: "J'écoute…", thinking: "Je réfléchis…", speaking: "Je parle", loading: "Chargement…",
     transcribing: "Je comprends…", preparing: "Préparation de la voix…", loadingAvatar: "Chargement du personnage",
     placeholder: "Écrivez votre question", hint: "Appuyez sur Parler et posez votre question ; elle part quand vous avez fini.",
@@ -60,6 +63,7 @@ export const TEXTS = {
     lastHeard: "Dernière phrase entendue", heardName: "a entendu son nom", heardNoName: "n'a pas entendu son nom",
   },
   sv: {
+    autoLanguage: "Känn igen språket när du pratar", useful: "Var svaret till hjälp?", notUseful: "Inte till hjälp", thanks: "Tack för din åsikt",
     idle: "Redo", listening: "Lyssnar…", thinking: "Tänker…", speaking: "Talar", loading: "Laddar…",
     transcribing: "Förstår…", preparing: "Förbereder rösten…", loadingAvatar: "Laddar karaktär",
     placeholder: "Skriv din fråga", hint: "Tryck på Prata och ställ din fråga; den skickas när du är klar.",
@@ -79,6 +83,7 @@ export const TEXTS = {
     lastHeard: "Senast hörda", heardName: "hörde sitt namn", heardNoName: "hörde inte sitt namn",
   },
   de: {
+    autoLanguage: "Sprache beim Sprechen erkennen", useful: "War die Antwort hilfreich?", notUseful: "Nicht hilfreich", thanks: "Danke für deine Rückmeldung",
     idle: "Bereit", listening: "Ich höre zu…", thinking: "Ich denke nach…", speaking: "Ich spreche", loading: "Lädt…",
     transcribing: "Ich verstehe…", preparing: "Stimme wird vorbereitet…", loadingAvatar: "Figur wird geladen",
     placeholder: "Schreibe deine Frage", hint: "Drücke Sprechen und stell deine Frage; sie wird gesendet, wenn du fertig bist.",

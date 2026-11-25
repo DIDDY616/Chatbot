@@ -2,28 +2,45 @@
 
 La consola sirve para administrar el asistente sin tocar código. Se abre en `http://localhost:8501` cuando el asistente está encendido (ver [instalacion.md](instalacion.md#encender-y-apagar)).
 
-No pide usuario ni contraseña. Los cambios aplican de inmediato.
+Si en `.env` hay una clave `ADMIN_TOKEN`, la consola la pide al abrirla (ver [instalacion.md](instalacion.md#clave-de-administración)). Sin clave, cualquiera que llegue a la dirección puede administrar.
+
+Los cambios aplican de inmediato, salvo lo que queda **en borrador**: los documentos y preguntas frecuentes nuevos solo los ve la consola hasta que alguien los publica.
 
 ![Consola en la sección Reuniones](img/consola_reuniones.png)
 
-El menú de la izquierda tiene siete secciones. Abajo del menú aparece el estado de la conexión con la API y cuántos fragmentos hay indexados.
+El menú de la izquierda tiene siete secciones: Reuniones, Documentos, Preguntas frecuentes, Asistentes, Personajes, Probar e Historial. Abajo del menú aparece el estado de la conexión con la API y cuántos fragmentos hay indexados.
 
 ## Cómo agregar o actualizar información
 
-Es la tarea más frecuente. Hay dos caminos.
+Es la tarea más frecuente. El camino recomendado es **subir → probar → publicar**:
+
+```mermaid
+flowchart LR
+    A[Subir documento<br>o pregunta frecuente] --> B[Queda en borrador]
+    B --> C[Probar con borradores<br>en la sección Probar]
+    C -->|la respuesta está bien| D[Publicar]
+    C -->|está mal| E[Corregir el documento<br>y volver a subirlo]
+    E --> B
+    D --> F[Los estudiantes<br>ya lo ven]
+```
 
 ### Subir un documento
 
 1. Entra a **Documentos**.
-2. Elige el archivo. Formatos: PDF, Word (`.docx`), Excel (`.xlsx`), texto (`.txt`) y Markdown (`.md`).
+2. Elige el archivo. Formatos: PDF, Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), CSV, texto (`.txt`) y Markdown (`.md`). Tamaño máximo: 50 MB (se cambia con `MAX_UPLOAD_MB`).
 3. Elige una categoría existente o escribe una nueva, por ejemplo el programa (`ITC`, `IMT`) o el tema (`becas`, `servicios`).
-4. Pulsa subir. El documento se guarda, se parte en fragmentos y se indexa.
+4. Deja sin marcar **Publicar de inmediato** si quieres probarlo primero (lo recomendado).
+5. Pulsa subir. El documento se guarda, se parte en fragmentos y se indexa.
 
-El asistente puede usarlo desde la siguiente pregunta.
+### Probarlo y publicarlo
+
+1. En **Probar**, con **Con borradores** activado, haz una pregunta que el documento debería contestar. Los fragmentos en borrador aparecen marcados como `BORRADOR`.
+2. Si la respuesta es correcta, vuelve a **Documentos**, selecciona el documento y pulsa **Publicar**. El botón **Publicar todos los borradores** publica de una vez todo lo pendiente.
+3. Para retirar un documento sin borrarlo, selecciónalo y pulsa **Pasar a borrador**.
 
 ### Actualizar un documento
 
-Sube el archivo nuevo con el mismo nombre y la misma categoría. Sustituye al anterior y se vuelve a indexar.
+Sube el archivo nuevo con el mismo nombre y la misma categoría. Sustituye al anterior y queda en el estado que elijas al subirlo. Si el archivo nuevo no se puede leer, se conserva el anterior.
 
 ### Quitar un documento
 
@@ -35,7 +52,8 @@ Sirve para respuestas cortas que no vienen en ningún documento.
 
 1. Entra a **Preguntas frecuentes**.
 2. Escribe la pregunta, la respuesta y la categoría.
-3. Guarda.
+3. Marca **Publicar de inmediato** o déjala en borrador para probarla.
+4. Pulsa agregar. Cada pregunta guardada tiene botones para guardar cambios, publicar o pasar a borrador, y eliminar.
 
 El asistente la usa igual que un documento y la cita como fuente.
 
@@ -78,13 +96,13 @@ Requisitos y límites en [teams.md](teams.md).
 
 ### Documentos
 
-Lista de los archivos de la base de conocimiento, con su categoría, tamaño y número de fragmentos. Permite subir, eliminar, ver los fragmentos de un documento y reindexar.
+Lista de los archivos de la base de conocimiento, con su categoría, estado (**Publicado** o **Borrador**), tamaño y número de fragmentos. Permite subir, publicar o pasar a borrador, eliminar, ver los fragmentos de un documento y reindexar.
 
-Ver los fragmentos sirve para comprobar que el texto se extrajo bien, sobre todo en PDF y Excel.
+Ver los fragmentos sirve para comprobar que el texto se extrajo bien, sobre todo en PDF, Excel y PowerPoint.
 
 ### Preguntas frecuentes
 
-Agregar, editar y eliminar preguntas con su respuesta y su categoría.
+Agregar, editar, publicar y eliminar preguntas con su respuesta y su categoría. Cada una muestra su estado.
 
 ### Asistentes
 
@@ -100,7 +118,7 @@ Cada asistente es un perfil independiente. Se pueden crear tantos como programas
 | Estilo y cómo habla | La personalidad. Hay cuatro estilos predefinidos (Cercano, Formal, Breve y directo, Paciente y didáctico) y el texto se puede ajustar |
 | Saludo inicial | Lo que dice al empezar |
 | Idioma predeterminado | El idioma con el que arranca |
-| Personaje y expresión base | La apariencia del avatar |
+| Personaje y expresión base | La apariencia del avatar, incluidos los personajes propios |
 | Motor de voz y voz en cada idioma | Piper (rápida) o Chatterbox (natural, si está instalada) |
 | Acceso a la información | Qué puede consultar |
 | Nombres en reunión | Variantes del nombre a las que responde en Teams |
@@ -109,39 +127,53 @@ Cada asistente es un perfil independiente. Se pueden crear tantos como programas
 
 **La personalidad solo cambia el tono.** No cambia los datos ni la regla de contestar únicamente con la información disponible.
 
-Para crear uno, elige "Nuevo…" en la lista, escribe un identificador sin espacios (por ejemplo `asesor-imt`) y llena los campos.
+Para crear uno, elige "Nuevo…" en la lista, escribe un identificador sin espacios (minúsculas, números, `-` o `_`; por ejemplo `asesor-imt`) y llena los campos.
+
+### Personajes
+
+Lista de personajes 3D con su licencia, y formulario para subir uno propio.
+
+- El archivo debe ser un `.glb` con esqueleto tipo Mixamo, las 52 formas faciales de ARKit y los 15 visemas de Oculus. Los que exportan Ready Player Me, Avaturn o Avatar SDK ya vienen así. Con otro tipo de modelo el personaje aparece, pero los labios y la cara no se mueven.
+- Escribe el nombre, el tipo de cuerpo (para la postura y la animación) y la licencia o procedencia.
+- Después, asígnalo a un asistente en **Asistentes** → **Personaje**.
+
+Los personajes de ejemplo no se pueden borrar desde aquí; los propios sí.
 
 ### Probar
 
-Para hacer una pregunta y ver qué pasa por dentro antes de publicar un cambio:
+Para hacer una pregunta y ver qué pasa por dentro **antes de publicar** un cambio:
 
 - la respuesta;
+- la intención detectada (consulta, saludo, despedida o agradecimiento);
 - la pregunta tal como se buscó, ya completada con el contexto;
-- los fragmentos que se usaron, con su fuente y qué tan parecidos son a la pregunta.
+- los fragmentos que se usaron, con su fuente, qué tan parecidos son a la pregunta y si están en borrador.
+
+El interruptor **Con borradores** está activado por omisión: así se ve cómo contestaría el asistente si publicaras lo pendiente. Desactívalo para ver exactamente lo que ve un estudiante.
 
 Si la respuesta es mala, casi siempre se ve aquí por qué: no se recuperó el fragmento correcto, o el documento no dice lo que se esperaba.
 
-También corre la **evaluación**: una lista de preguntas con respuesta esperada (`tests/preguntas.jsonl`) que dice cuáles pasan. Conviene correrla después de cargar documentos o cambiar un asistente.
+También corre la **evaluación**: una lista de preguntas con respuesta esperada (`tests/preguntas.jsonl`) que dice cuáles pasan. Conviene correrla después de cargar documentos o cambiar un asistente, con o sin borradores.
 
 Las pruebas de esta sección no se guardan en el historial.
 
 ### Historial
 
-- Totales: preguntas, cuántas se contestaron, cuántas no, sesiones.
-- Gráficas por día, por idioma y por asistente.
+- Totales: preguntas, cuántas se contestaron, cuántas no, sesiones y valoraciones.
+- Gráficas por día, por idioma, por asistente y por intención.
 - **Preguntas sin respuesta más repetidas.** Es la lista más útil: dice qué información hace falta cargar.
-- Tabla de preguntas, con una columna para valorar cada respuesta como buena o mala.
+- Tabla de preguntas, con una columna para valorar cada respuesta como buena o mala. Los estudiantes también valoran con 👍 / 👎 en la página del avatar, y esas valoraciones aparecen aquí.
+- **Descargar CSV**: todo el historial en un archivo que abre Excel, para reportes.
 
-### Chat de voz
-
-Un chat sencillo, sin avatar, para probar la voz y el texto desde la consola.
+Para probar la voz sin avatar ya no hay una sección aparte: la página del avatar hace lo mismo y además muestra al personaje.
 
 ## Preguntas habituales
 
 **¿Tengo que reiniciar algo después de un cambio?** No.
 
-**¿Dónde quedan los datos?** En la carpeta `data/` del proyecto: documentos en `data/docs`, perfiles en `data/perfiles.json`, preguntas frecuentes en `data/faqs.json`, historial en `data/historial.jsonl`.
+**¿Por qué el asistente no usa un documento que acabo de subir?** Porque está en borrador. Publícalo en **Documentos**.
 
-**¿Cómo hago una copia de seguridad?** Copia la carpeta `data/`. El índice (`data/chroma`) se puede regenerar con el botón de reindexar.
+**¿Dónde quedan los datos?** En la carpeta `data/` del proyecto: documentos en `data/docs`, estado de publicación en `data/publicacion.json`, perfiles en `data/perfiles.json`, preguntas frecuentes en `data/faqs.json`, personajes propios en `data/personajes.json` (y sus archivos en `web/avatars/`), historial en `data/historial.jsonl` y valoraciones en `data/valoraciones.json`.
 
-**El asistente no encuentra algo que sí está en un documento.** Revisa en **Documentos** que el archivo tenga fragmentos, y en **Probar** qué fragmentos recupera. Si el asistente tiene acceso restringido, revisa que ese documento o su categoría esté asignado.
+**¿Cómo hago una copia de seguridad?** Copia la carpeta `data/` y `web/avatars/`. El índice (`data/chroma`) se puede regenerar con el botón de reindexar.
+
+**El asistente no encuentra algo que sí está en un documento.** Revisa en **Documentos** que el archivo tenga fragmentos y esté publicado, y en **Probar** qué fragmentos recupera. Si el asistente tiene acceso restringido, revisa que ese documento o su categoría esté asignado.

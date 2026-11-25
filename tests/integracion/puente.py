@@ -3,7 +3,7 @@
 Comprueba que la reunión recibe la imagen y la voz del asistente como cámara y micrófono, y
 que el asistente oye a un participante y contesta cuando dicen su nombre.
 
-Uso:  python -m tests.puente [carpeta para guardar capturas]     (con la API encendida)
+Uso:  python -m tests.integracion.puente [carpeta para guardar capturas]     (con la API encendida)
 """
 import sys
 import time

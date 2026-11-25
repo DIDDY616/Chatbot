@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Asistente Tec</title>
   <link rel="stylesheet" href="style.css">
-  <!-- three.js se carga del CDN (requiere internet); TalkingHead y HeadAudio están en vendor/ -->
+  <!-- Todo se sirve desde vendor/: la página funciona sin internet (three.js se descarga con
+       scripts/vendorizar_three.py). -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js/+esm",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/",
+      "three": "./vendor/three/build/three.module.js",
+      "three/addons/": "./vendor/three/examples/jsm/",
       "talkinghead": "./vendor/talkinghead/talkinghead.mjs",
       "headaudio": "./vendor/headaudio/headaudio.min.mjs"
     }
@@ -38,6 +39,11 @@
       <p id="user-line" class="user-line" hidden></p>
       <p id="subtitle" class="subtitle" aria-live="polite" hidden></p>
       <p id="meta" class="meta" hidden></p>
+      <div id="feedback" class="feedback" hidden>
+        <span id="feedback-label" data-i18n="useful">¿Te sirvió la respuesta?</span>
+        <button type="button" data-rating="good" aria-pressed="false" data-i18n-label="useful">👍</button>
+        <button type="button" data-rating="bad" aria-pressed="false" data-i18n-label="notUseful">👎</button>
+      </div>
 
       <form id="ask-form" class="ask" autocomplete="off">
         <button id="mic" class="mic" type="button" disabled>
@@ -58,6 +64,7 @@
     </div>
     <label><span data-i18n="profile">Asistente</span><select id="profile"></select></label>
     <label><span data-i18n="language">Idioma</span><select id="language"></select></label>
+    <label class="check"><input id="auto-language" type="checkbox"><span data-i18n="autoLanguage">Detectar el idioma al hablar</span></label>
     <label><span data-i18n="character">Personaje</span><select id="character"></select></label>
     <label><span data-i18n="engine">Motor de voz</span>
       <select id="engine">

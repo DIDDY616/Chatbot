@@ -9,15 +9,16 @@ Opciones:
     -VozNatural   Agrega la voz natural con clonacion (Chatterbox). Pide unos 3 GB mas de GPU.
     -SoloRevisar  No instala nada: solo dice que falta.
 
-Requisitos que este script NO instala: Python 3.10 o posterior y los controladores de NVIDIA.
-Detalles en docs/instalacion.md.
+Requisitos que este script NO instala: Python 3.10 a 3.13 de python.org (de preferencia 3.12)
+y los controladores de NVIDIA. Detalles en docs/instalacion.md.
+
+La primera vez crea .env a partir de .env.example y elige los modelos segun la memoria de la
+GPU. Si ya existe .env, lo respeta.
 #>
 param([switch]$Minimo, [switch]$VozNatural, [switch]$SoloRevisar)
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
-
-$Modelos = @("gemma3:12b", "bge-m3")
 $VocesMinimas = @("es_MX-claude-high", "en_US-lessac-medium")
 $VocesTodas = $VocesMinimas + @(
     "es_MX-ald-medium", "es_ES-davefx-medium", "es_ES-sharvard-medium", "es_AR-daniela-high",
@@ -41,27 +42,62 @@ if ($SoloRevisar) {
 }
 
 Paso "1 de 7  Python"
-$Python = $null
-foreach ($Candidato in @("py", "python")) {
-    if (Get-Command $Candidato -ErrorAction SilentlyContinue) { $Python = $Candidato; break }
+# Se busca un Python oficial (compilado con MSVC) entre 3.10 y 3.13. El de MSYS2 o Cygwin no
+# sirve: no hay paquetes compilados de faster-whisper, onnxruntime ni Piper para el. Y 3.14 es
+# demasiado nuevo para varias librerias.
+function Test-PythonCandidate([string[]]$Comando) {
+    try {
+        $Salida = & $Comando[0] @($Comando | Select-Object -Skip 1) -c "import sys; print('%d.%d' % sys.version_info[:2], 'MSC' in sys.version)" 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $Salida) { return $null }
+        $Partes = "$Salida".Trim() -split " "
+        $V = [version]$Partes[0]
+        if ($Partes[1] -ne "True" -or $V -lt [version]"3.10" -or $V -ge [version]"3.14") { return $null }
+        return $Partes[0]
+    } catch { return $null }
 }
-if (-not $Python) { Detener "no encontre Python. Instala Python 3.10 o posterior desde python.org y marca 'Add python.exe to PATH'." }
-$Version = & $Python -c "import sys; print('%d.%d' % sys.version_info[:2])"
-if ([version]$Version -lt [version]"3.10") { Detener "hay Python $Version y se necesita 3.10 o posterior." }
-Write-Host "Python $Version"
+$Lanzador = (Get-Command py -ErrorAction SilentlyContinue).Source
+if (-not $Lanzador -and (Test-Path "$env:LOCALAPPDATA\Programs\Python\Launcher\py.exe")) { $Lanzador = "$env:LOCALAPPDATA\Programs\Python\Launcher\py.exe" }
+$Candidatos = @()
+if ($Lanzador) { $Candidatos += foreach ($V in "3.12", "3.11", "3.13", "3.10") { ,@($Lanzador, "-$V") } }
+$Candidatos += foreach ($V in "312", "311", "313", "310") { ,@("$env:LOCALAPPDATA\Programs\Python\Python$V\python.exe") }
+$Candidatos += ,@("python")
+$Python = $null; $Version = $null
+foreach ($Candidato in $Candidatos) {
+    if (-not (Get-Command $Candidato[0] -ErrorAction SilentlyContinue)) { continue }
+    $Version = Test-PythonCandidate $Candidato
+    if ($Version) { $Python = $Candidato; break }
+}
+if (-not $Python) { Detener "no encontre Python 3.10 a 3.13 de python.org. Instala Python 3.12 (winget install -e --id Python.Python.3.12) y vuelve a ejecutar este script." }
+Write-Host "Python $Version ($($Python -join ' '))"
 
-Paso "2 de 7  Tarjeta grafica"
+Paso "2 de 7  Tarjeta grafica y configuracion"
+$Gigas = 0
 if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
     $Gpu = (& nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits | Select-Object -First 1) -split ","
     $Gigas = [math]::Round([int]$Gpu[1].Trim() / 1024)
     Write-Host ("{0} con {1} GB" -f $Gpu[0].Trim(), $Gigas)
-    if ($Gigas -lt 12) { Write-Host "Aviso: con menos de 12 GB hay que usar un modelo mas chico (ver docs/instalacion.md)." -ForegroundColor Yellow }
 } else {
     Write-Host "Aviso: no hay GPU NVIDIA. El asistente funcionara por CPU, demasiado lento para conversar por voz." -ForegroundColor Yellow
 }
+if (-not (Test-Path .env)) {
+    if ($Gigas -ge 12) { $Llm = "gemma3:12b"; $Whisper = "large-v3-turbo"; $Extra = @() }
+    elseif ($Gigas -ge 6) { $Llm = "gemma3:4b"; $Whisper = "small"; $Extra = @() }
+    else { $Llm = "gemma3:4b"; $Whisper = "small"; $Extra = @("WHISPER_DEVICE=cpu", "WHISPER_COMPUTE=int8") }
+    $Texto = (Get-Content .env.example -Encoding UTF8) -replace "^LLM_MODEL=.*", "LLM_MODEL=$Llm" -replace "^WHISPER_MODEL=.*", "WHISPER_MODEL=$Whisper"
+    $Texto += $Extra
+    [IO.File]::WriteAllLines((Join-Path $PSScriptRoot ".env"), $Texto, (New-Object Text.UTF8Encoding $false))
+    Write-Host "Se creo .env para $Gigas GB: modelo $Llm, reconocimiento de voz $Whisper. Puedes cambiarlo en .env."
+} else {
+    Write-Host ".env ya existe: se respeta."
+}
+$Llm = "gemma3:12b"
+foreach ($Linea in Get-Content .env -Encoding UTF8) { if ($Linea -match "^\s*LLM_MODEL\s*=\s*([^#\s]+)") { $Llm = $Matches[1] } }
+$Embed = "bge-m3"
+foreach ($Linea in Get-Content .env -Encoding UTF8) { if ($Linea -match "^\s*EMBED_MODEL\s*=\s*([^#\s]+)") { $Embed = $Matches[1] } }
+$Modelos = @($Llm, $Embed)
 
 Paso "3 de 7  Entorno de Python y librerias"
-if (-not (Test-Path $Py)) { & $Python -m venv .venv; Comprobar "al crear el entorno" }
+if (-not (Test-Path $Py)) { & $Python[0] @($Python | Select-Object -Skip 1) -m venv .venv; Comprobar "al crear el entorno" }
 & $Py -m pip install --quiet --upgrade pip; Comprobar "al actualizar pip"
 & $Py -m pip install --quiet -r requirements.txt; Comprobar "al instalar las librerias"
 if ($VozNatural) {

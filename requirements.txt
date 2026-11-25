@@ -5,6 +5,7 @@ chromadb
 pypdf
 python-docx
 openpyxl
+python-pptx
 streamlit
 requests
 python-multipart

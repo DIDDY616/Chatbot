@@ -1,12 +1,12 @@
 """Mide Chatterbox: tiempo, memoria de GPU y si Whisper entiende lo que dijo.
 
-Uso:  python -m tests.voz_natural
+Uso:  python -m tests.integracion.voz_natural
 Guarda las muestras en data/muestras/ para escucharlas.
 """
+import io
 import sys
 import time
 import wave
-import io
 
 import torch
 

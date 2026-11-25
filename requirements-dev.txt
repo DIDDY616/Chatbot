@@ -1,0 +1,19 @@
+# Para correr las pruebas unitarias y el revisor de estilo sin GPU ni modelos:
+#   pip install -r requirements-dev.txt
+#   pytest
+#   ruff check app scripts tests
+# No trae Whisper, Piper ni Playwright: las pruebas unitarias no los usan.
+fastapi
+httpx
+pydantic>=2
+openai
+chromadb
+numpy
+pypdf
+python-docx
+openpyxl
+python-pptx
+python-multipart
+requests
+pytest
+ruff

@@ -16,8 +16,14 @@ import time
 from pathlib import Path
 from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 
-from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import sync_playwright
+try:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
+except ImportError:  # sin Playwright la API funciona igual; solo no puede entrar a reuniones
+    sync_playwright = None
+
+    class PlaywrightError(Exception):
+        pass
 
 log = logging.getLogger("uvicorn.error")
 
@@ -327,6 +333,8 @@ _lock = threading.Lock()
 
 def join(url: str, profile: str, name: str) -> dict:
     global _current
+    if sync_playwright is None:
+        raise ValueError("Falta Playwright: ejecuta pip install -r requirements.txt")
     with _lock:
         if _current and _current.is_alive():
             raise ValueError("El asistente ya está en una reunión. Sácalo antes de entrar a otra.")

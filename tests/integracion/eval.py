@@ -1,4 +1,4 @@
-"""Evaluación rápida del RAG.  Uso:  python -m tests.eval
+"""Evaluación rápida del RAG.  Uso:  python -m tests.integracion.eval
 
 Los casos están en tests/preguntas.jsonl; el formato se explica en app/evaluation.py.
 """

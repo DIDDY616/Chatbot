@@ -143,6 +143,51 @@ Enciende la API y la consola, cada una en su terminal:
 
 Con la voz natural y el avatar a la vez, la GPU de 16 GB queda al límite (unos 15.5 GB) y las respuestas salen más lentas.
 
+## Mac con Apple Silicon (M1 a M4)
+
+`instalar.ps1` e `iniciar.bat` son solo para Windows. En Mac se instala a mano y se enciende con `iniciar.sh`. Todas las librerías existen para Apple Silicon (se comprobó que hay versiones compiladas de faster-whisper, CTranslate2, Piper, onnxruntime, PyAV, Chroma y Playwright para macOS arm64), pero **el asistente completo todavía no se ha encendido en una Mac**: trátalo como primera prueba.
+
+Diferencias con Windows:
+
+- **Ollama usa la GPU del Mac** (Metal) y la memoria unificada: el modelo de lenguaje suele ir más rápido que en una laptop con GPU de 6 GB.
+- **Whisper va en el procesador**: faster-whisper no tiene versión para la GPU del Mac. Con el modelo `small` en un M4 se espera alrededor de un segundo por frase (sin medir).
+- Memoria: con 16 GB usa `gemma3:4b`; con 24 GB o más, `gemma3:12b`.
+
+### Pasos
+
+```bash
+# 1. Herramientas (con Homebrew: https://brew.sh)
+brew install python@3.12 git
+brew install --cask ollama google-chrome     # o Microsoft Edge en lugar de Chrome
+
+# 2. Proyecto
+git clone https://github.com/DIDDY616/Chatbot.git && cd Chatbot
+git checkout explect
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+
+# 3. Configuración: copia el ejemplo y deja estas líneas (ver .env.example)
+cp .env.example .env
+#   LLM_MODEL=gemma3:4b      (o gemma3:12b con 24 GB)
+#   WHISPER_MODEL=small
+#   WHISPER_DEVICE=cpu
+#   WHISPER_COMPUTE=int8
+
+# 4. Modelos, voces, personajes e índice (abre la app de Ollama antes)
+ollama pull gemma3:4b
+ollama pull bge-m3
+.venv/bin/python -m piper.download_voices es_MX-claude-high en_US-lessac-medium es_MX-ald-medium en_US-ryan-medium fr_FR-siwis-medium sv_SE-nst-medium de_DE-thorsten-medium --download-dir data/voices
+.venv/bin/python -m scripts.descargar_avatares
+.venv/bin/python -m app.ingest
+.venv/bin/python -m scripts.revisar
+
+# 5. Encender (Ctrl+C para apagar)
+chmod +x iniciar.sh
+./iniciar.sh
+```
+
+La primera vez que la página del avatar pida el micrófono, macOS pregunta si el navegador puede usarlo: acepta. Para entrar a Teams no hace falta dar permisos de cámara: el asistente usa dispositivos simulados dentro del navegador.
 ## Configuración
 
 Todo se configura en el archivo `.env` de la raíz del proyecto. El instalador lo crea a partir de `.env.example`; para hacerlo a mano, copia ese archivo como `.env`. No hay que reiniciar Windows ni usar `setx`: basta con apagar y volver a encender el asistente. Una variable definida en la terminal gana sobre `.env`.

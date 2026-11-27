@@ -24,7 +24,10 @@ BROWSERS = [
     r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe",
     r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe",
     r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe",
+    "/Applications/Google Chrome.app",
+    "/Applications/Microsoft Edge.app",
 ]
+MAC = sys.platform == "darwin"
 
 missing = 0
 
@@ -47,10 +50,11 @@ def check_config() -> None:
 
 def check_python() -> None:
     version = sys.version_info
-    official = "MSC" in sys.version
+    # En Windows tiene que ser el de python.org (compilado con MSVC); el de MSYS2 no sirve.
+    official = "MSC" in sys.version if sys.platform == "win32" else True
     level = "OK" if (3, 10) <= version[:2] < (3, 14) and official else "FALTA"
     report(level, f"Python {version.major}.{version.minor}.{version.micro}"
-                  f"{'' if official else ' (no es el de python.org)'}: se necesita 3.10 a 3.13 de python.org")
+                  f"{'' if official else ' (no es el de python.org)'}: se necesita 3.10 a 3.13")
     for name in PACKAGES:
         try:
             importlib.import_module(name)
@@ -59,6 +63,16 @@ def check_python() -> None:
 
 
 def check_gpu() -> None:
+    if MAC:
+        # En Apple Silicon Ollama usa la GPU por Metal; faster-whisper no tiene Metal y va en el procesador.
+        memory = int(subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True).stdout or 0) / 1024**3
+        needed = {"gemma3:12b": 24, "gemma3:4b": 16}.get(config.LLM_MODEL, 16)
+        report("OK" if memory >= needed else "AVISO",
+               f"Mac con {memory:.0f} GB de memoria unificada (recomendado {needed} GB o más para {config.LLM_MODEL})")
+        cpu = config.WHISPER_DEVICE == "cpu"
+        report("OK" if cpu else "FALTA", "reconocimiento de voz en procesador" + (
+            "" if cpu else ": en Mac pon WHISPER_DEVICE=cpu y WHISPER_COMPUTE=int8 en .env"))
+        return
     if not shutil.which("nvidia-smi"):
         report("AVISO", "no se encontró una GPU NVIDIA: el reconocimiento de voz y el modelo irán por CPU, muy lentos")
         return

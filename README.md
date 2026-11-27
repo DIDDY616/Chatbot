@@ -20,7 +20,7 @@ Todo corre en una sola computadora, con modelos de código o pesos abiertos, sin
 
 ## Instalación rápida
 
-Requisitos: Windows 10 u 11, Python 3.10 a 3.13 de python.org (de preferencia 3.12), una GPU NVIDIA (6 GB como mínimo, 12 GB o más para el modelo grande) y unos 25 GB de disco. El porqué de la GPU está en [docs/arquitectura.md](docs/arquitectura.md#por-qué-gpu-y-por-qué-local).
+Requisitos: Windows 10 u 11 (o una Mac con Apple Silicon, ver abajo), Python 3.10 a 3.13 de python.org (de preferencia 3.12), una GPU NVIDIA (6 GB como mínimo, 12 GB o más para el modelo grande) y unos 25 GB de disco. El porqué de la GPU está en [docs/arquitectura.md](docs/arquitectura.md#por-qué-gpu-y-por-qué-local).
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File instalar.ps1
@@ -31,6 +31,8 @@ El instalador detecta la memoria de la GPU y crea `.env` con los modelos adecuad
 ```powershell
 .\iniciar.bat
 ```
+
+En Mac con Apple Silicon se instala a mano y se enciende con `./iniciar.sh` (ver [docs/instalacion.md](docs/instalacion.md#mac-con-apple-silicon-m1-a-m4)).
 
 Se abre la consola en `http://localhost:8501`. La página del avatar queda en `http://localhost:8000/avatar/`.
 

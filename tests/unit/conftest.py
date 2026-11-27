@@ -1,10 +1,10 @@
 """Entorno de pruebas sin modelos: datos en una carpeta temporal, embeddings y LLM simulados.
 
 Los embeddings simulados son una bolsa de palabras con hash: dos textos que comparten palabras
-quedan cerca, así que la búsqueda de Chroma (real) se comporta de forma creíble.
+quedan cerca, así que la búsqueda por vectores se comporta de forma creíble.
 
-Con PRUEBAS_CHROMA=simulado se usa un Chroma en memoria (tests/unit/fake_chroma.py), para
-computadoras donde el Chroma real no puede correr (por ejemplo, con muy poca memoria libre).
+El almacén de vectores es el propio (app/vectorstore.py) salvo con PRUEBAS_VECTORES=chroma, que
+usa Chroma. GitHub Actions corre las dos variantes.
 """
 import hashlib
 import math
@@ -67,12 +67,13 @@ class FakeLLM:
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
-    """Carpeta de datos vacía, Chroma propio y modelos simulados. Devuelve los dobles."""
+    """Carpeta de datos vacía, almacén de vectores propio y modelos simulados. Devuelve los dobles."""
     data = tmp_path / "data"
     paths = {
         "DATA_DIR": data,
         "DOCS_DIR": data / "docs",
         "CHROMA_DIR": data / "chroma",
+        "VECTORS_DIR": data / "vectores",
         "LOG_FILE": data / "historial.jsonl",
         "PROFILES_FILE": data / "perfiles.json",
         "FAQS_FILE": data / "faqs.json",
@@ -87,11 +88,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "ADMIN_TOKEN", "")
     data.mkdir()
 
+    monkeypatch.setattr(config, "VECTOR_STORE", "chroma" if os.getenv("PRUEBAS_VECTORES") == "chroma" else "local")
     store.reset()
-    if os.getenv("PRUEBAS_CHROMA") == "simulado":
-        from tests.unit.fake_chroma import FakeClient
-
-        monkeypatch.setattr(store, "_chroma", FakeClient())
     embeddings = FakeEmbeddings()
     llm = FakeLLM()
     monkeypatch.setattr(store, "_client", lambda: SimpleNamespace(embeddings=embeddings))

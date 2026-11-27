@@ -19,7 +19,7 @@ La GPU es necesaria para conversar por voz con fluidez. La configuración grande
 
 Con menos de 12 GB el instalador elige solo un modelo de lenguaje más chico (`gemma3:4b`) y un Whisper más chico (`small`). Esa combinación todavía no se ha medido en este proyecto: espera respuestas algo menos precisas, sobre todo con nombres aproximados de carreras.
 
-**Memoria RAM libre.** Con poca memoria libre (por ejemplo, con Android Studio y su emulador abiertos) la base vectorial Chroma no logra reservar memoria y la API se cierra sin mensaje claro (`access violation` u `OpenBLAS error: Memory allocation still failed`). Cierra programas pesados antes de encender el asistente.
+**Memoria RAM libre.** Con poca memoria libre (por ejemplo, con Android Studio y su emulador abiertos) los modelos no caben y todo va lento o se cierra. Deja unos 6 GB libres antes de encender el asistente.
 
 ### Programas
 
@@ -145,7 +145,7 @@ Con la voz natural y el avatar a la vez, la GPU de 16 GB queda al límite (unos 
 
 ## Mac con Apple Silicon (M1 a M4)
 
-`instalar.ps1` e `iniciar.bat` son solo para Windows. En Mac se instala a mano y se enciende con `iniciar.sh`. Todas las librerías existen para Apple Silicon (se comprobó que hay versiones compiladas de faster-whisper, CTranslate2, Piper, onnxruntime, PyAV, Chroma y Playwright para macOS arm64), pero **el asistente completo todavía no se ha encendido en una Mac**: trátalo como primera prueba.
+`instalar.ps1` e `iniciar.bat` son solo para Windows. En Mac se instala a mano y se enciende con `iniciar.sh`. Todas las librerías existen para Apple Silicon (se comprobó que hay versiones compiladas de faster-whisper, CTranslate2, Piper, onnxruntime, PyAV y Playwright para macOS arm64), pero **el asistente completo todavía no se ha encendido en una Mac**: trátalo como primera prueba.
 
 Diferencias con Windows:
 
@@ -208,6 +208,7 @@ Todo se configura en el archivo `.env` de la raíz del proyecto. El instalador l
 | `SESSION_TTL_MINUTES` | `60` | Minutos sin actividad tras los que se olvida una conversación |
 | `MAX_UPLOAD_MB` | `50` | Tamaño máximo de un archivo subido |
 | `LANGUAGE_DETECT_CONFIDENCE` | `0.8` | Qué tan seguro debe estar Whisper para cambiar de idioma solo |
+| `VECTOR_STORE` | `local` | Almacén de vectores: `local` (archivo propio) o `chroma` |
 | `HYBRID_SEARCH` | `true` | Búsqueda por significado y por palabras exactas; `false` vuelve a solo significado |
 | `TEAMS_BROWSER` | (Chrome, luego Edge) | Navegador para entrar a reuniones: `chrome`, `msedge` o `chromium` |
 
@@ -235,7 +236,7 @@ Las pruebas unitarias no necesitan GPU, Ollama ni Whisper: simulan los modelos y
 .\.venv\Scripts\python.exe -m ruff check app scripts tests
 ```
 
-Si Chroma no puede correr en la computadora (por ejemplo, con muy poca memoria libre), `$env:PRUEBAS_CHROMA = "simulado"` usa una versión en memoria que respeta sus mismas reglas de filtros.
+Por omisión las pruebas usan el almacén de vectores propio. Con `$env:PRUEBAS_VECTORES = "chroma"` usan Chroma (en algunas computadoras con Windows Chroma se cae al guardar; ver los problemas comunes).
 
 Las pruebas con los modelos reales están en [demostracion.md](demostracion.md#pruebas-automáticas).
 
@@ -246,7 +247,8 @@ Las pruebas con los modelos reales están en [demostracion.md](demostracion.md#p
 | "No se pudo conectar con Ollama" | Ollama está cerrado | Ábrelo o ejecuta `iniciar.bat` |
 | Error de puerto en uso al encender | Ya hay una API o consola encendida | Cierra la ventana anterior |
 | Las respuestas tardan unos 10 segundos | Se usa `localhost` en lugar de `127.0.0.1` en la configuración | Deja las direcciones por omisión; en Windows `localhost` agrega unos 2 segundos por conexión |
-| La API se cierra sola al indexar, con `access violation` u `OpenBLAS error: Memory allocation` | Poca memoria RAM libre | Cierra programas pesados (emuladores, Android Studio, muchas pestañas) y vuelve a encender |
+| La API se cierra sola al indexar, con `access violation` | Usas `VECTOR_STORE=chroma` y Chroma tiene un fallo en algunas computadoras con Windows ([#5392](https://github.com/chroma-core/chroma/issues/5392)) | Quita `VECTOR_STORE=chroma` de `.env` (vuelve al almacén propio) y reindexa |
+| Todo va muy lento o la API se cierra | Poca memoria RAM libre | Cierra programas pesados (emuladores, Android Studio, muchas pestañas) |
 | El instalador dice que no encuentra Python | Solo hay un Python de MSYS2, Git Bash o 3.14 | `winget install -e --id Python.Python.3.12` |
 | `CUDA out of memory` al hablar | La GPU no alcanza para el modelo y Whisper | En `.env` usa `LLM_MODEL=gemma3:4b` y `WHISPER_MODEL=small`, o `WHISPER_DEVICE=cpu` con `WHISPER_COMPUTE=int8` |
 | La API se cierra con "Could not load symbol cudnnGetLibConfig" | Dos versiones de cuDNN cargadas | Ya está resuelto en `app/voice.py`; si reaparece, reinstala con `instalar.ps1` |

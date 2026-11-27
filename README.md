@@ -42,7 +42,7 @@ El paso a paso, la instalación manual, la configuración (`.env`) y la solució
 
 ```powershell
 pip install -r requirements-dev.txt
-pytest                      # 140 pruebas unitarias, sin GPU ni modelos (simulados)
+pytest                      # 148 pruebas unitarias, sin GPU ni modelos (simulados)
 ruff check app scripts tests
 ```
 

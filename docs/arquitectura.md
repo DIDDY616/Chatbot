@@ -25,7 +25,7 @@ flowchart LR
 
         subgraph Datos["data/"]
             D[(Documentos y<br>preguntas frecuentes)]
-            V[(Índice vectorial<br>Chroma)]
+            V[(Índice vectorial<br>data/vectores)]
             P[(Perfiles de asistente)]
             H[(Historial y valoraciones)]
         end
@@ -118,7 +118,7 @@ flowchart LR
     A[Administrador sube un documento<br>o escribe una pregunta frecuente] --> B[Se guarda en data/docs<br>o data/faqs.json]
     B --> C[Se parte en fragmentos<br>de unos 1000 caracteres]
     C --> D[bge-m3 calcula<br>un vector por fragmento]
-    D --> E[Se guarda en Chroma con su fuente,<br>categoría y estado: borrador]
+    D --> E[Se guarda en el índice con su fuente,<br>categoría y estado: borrador]
     E --> G[Se prueba en la consola<br>incluyendo borradores]
     G --> H[Se publica]
     H --> F[Disponible para<br>los estudiantes]
@@ -133,7 +133,7 @@ Los cambios aplican de inmediato, sin reiniciar nada. Los vectores se calculan a
 | Modelo de lenguaje | Gemma 3 de 12 mil millones de parámetros | Gemma Terms of Use (pesos abiertos) | Buen español y cabe en 16 GB junto con lo demás |
 | Servidor de modelos | Ollama | MIT | Instalación de un paso y API compatible con OpenAI |
 | Embeddings | bge-m3 | MIT | Multilingüe: sirve para los cinco idiomas |
-| Base vectorial | Chroma | Apache 2.0 | Se guarda en una carpeta, sin servidor aparte |
+| Base vectorial | Almacén propio con numpy (`app/vectorstore.py`); Chroma como opción | Propio / Apache 2.0 | Un archivo en `data/vectores`, sin servidor aparte. Chroma se cae en algunas computadoras con Windows al guardar ([issue #5392](https://github.com/chroma-core/chroma/issues/5392)), así que el almacén por omisión es uno propio que imita sus reglas; para miles de fragmentos responde en milisegundos. Con `VECTOR_STORE=chroma` se usa Chroma |
 | Reconocimiento de voz | faster-whisper con Whisper large-v3-turbo | MIT | Rápido en GPU y reconoce los cinco idiomas |
 | Voz rápida | Piper | GPL 3.0 | Corre en procesador, sin gastar GPU |
 | Voz natural (opcional) | Chatterbox Multilingual | MIT | Más humana y permite clonar una voz de referencia |

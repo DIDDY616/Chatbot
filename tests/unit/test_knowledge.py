@@ -99,13 +99,26 @@ def test_sync_index_migra_indices_viejos(env):
     """Un índice creado antes de los borradores no tiene el metadato "published"."""
     write_doc("general", "viejo.md", "Dato.")
     ingest_all()
+    # Chroma no borra claves con update (las combina), así que se recrean los fragmentos sin ella.
     col = store.collection()
-    found = col.get(include=["metadatas"])
-    col.update(ids=found["ids"], metadatas=[{k: v for k, v in m.items() if k != "published"}
-                                             for m in found["metadatas"]])
+    found = col.get(include=["metadatas", "documents", "embeddings"])
+    col.delete(ids=found["ids"])
+    col.add(ids=found["ids"], documents=found["documents"], embeddings=found["embeddings"],
+            metadatas=[{k: v for k, v in m.items() if k != "published"} for m in found["metadatas"]])
     assert "published" not in metas({"source": "general/viejo.md"})[0]
     assert publication.sync_index() == 1
     assert metas({"source": "general/viejo.md"})[0]["published"] is True
+
+
+def test_update_combina_metadatos(env):
+    """Comportamiento de Chroma del que depende publication.py: update agrega o cambia claves, no borra."""
+    write_doc("general", "a.md", "Dato.")
+    ingest_all()
+    col = store.collection()
+    [chunk_id] = col.get(include=[])["ids"]
+    col.update(ids=[chunk_id], metadatas=[{"published": False}])
+    meta = col.get(ids=[chunk_id], include=["metadatas"])["metadatas"][0]
+    assert meta == {"source": "general/a.md", "category": "general", "published": False}
 
 
 def test_filtro_para_estudiantes():

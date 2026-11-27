@@ -186,6 +186,6 @@ Para probar la voz sin avatar ya no hay una sección aparte: la página del avat
 
 **¿Dónde quedan los datos?** En la carpeta `data/` del proyecto: documentos en `data/docs`, estado de publicación en `data/publicacion.json`, perfiles en `data/perfiles.json`, preguntas frecuentes en `data/faqs.json`, personajes propios en `data/personajes.json` (y sus archivos en `web/avatars/`), historial en `data/historial.jsonl` y valoraciones en `data/valoraciones.json`.
 
-**¿Cómo hago una copia de seguridad?** Copia la carpeta `data/` y `web/avatars/`. El índice (`data/chroma`) se puede regenerar con el botón de reindexar.
+**¿Cómo hago una copia de seguridad?** Copia la carpeta `data/` y `web/avatars/`. El índice (`data/vectores`) se puede regenerar con el botón de reindexar.
 
 **El asistente no encuentra algo que sí está en un documento.** Revisa en **Documentos** que el archivo tenga fragmentos y esté publicado, y en **Probar** qué fragmentos recupera. Si el asistente tiene acceso restringido, revisa que ese documento o su categoría esté asignado.

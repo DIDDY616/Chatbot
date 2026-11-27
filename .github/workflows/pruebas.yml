@@ -1,5 +1,6 @@
 # Corre las pruebas unitarias y el revisor de estilo en cada push y pull request.
 # No necesita GPU ni modelos: el LLM y los embeddings se simulan (tests/unit/conftest.py).
+# Se corren dos veces: con el almacén de vectores propio (el de omisión) y con Chroma.
 name: Pruebas
 
 on:
@@ -9,6 +10,11 @@ on:
 jobs:
   unitarias:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        vectores: [local, chroma]
+    name: unitarias (${{ matrix.vectores }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,3 +25,5 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check app scripts tests
       - run: pytest
+        env:
+          PRUEBAS_VECTORES: ${{ matrix.vectores }}

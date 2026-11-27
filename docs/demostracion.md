@@ -55,7 +55,7 @@ Funciones deseables de la consola: historial, preguntas sin respuesta, estadíst
 
 Respaldan la demostración y se pueden repetir en cualquier momento.
 
-**Unitarias (sin modelos ni GPU).** `pytest` corre 140 pruebas: lectura de los siete formatos, fragmentación, configuración, intención, sesiones, activación por nombre (incluidas las frases que antes estaban en `tests.nombre`), borradores y publicación, acceso por asistente, historial, personajes, clave de administración, búsqueda híbrida, importación de páginas web y la API completa con modelos simulados. GitHub las corre en cada push.
+**Unitarias (sin modelos ni GPU).** `pytest` corre 148 pruebas: lectura de los siete formatos, fragmentación, configuración, intención, sesiones, activación por nombre (incluidas las frases que antes estaban en `tests.nombre`), borradores y publicación, acceso por asistente, historial, personajes, clave de administración, búsqueda híbrida, importación de páginas web, el almacén de vectores y la API completa con modelos simulados. GitHub las corre en cada push.
 
 **Con los modelos reales.** Necesitan Ollama y, las marcadas, la API encendida.
 

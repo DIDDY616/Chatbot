@@ -1,6 +1,11 @@
-"""Acceso a la base vectorial (Chroma) y al modelo de embeddings.
+"""Acceso al almacén de vectores y al modelo de embeddings.
 
-Todo se crea la primera vez que se usa: importar este módulo no abre la base ni se conecta
+Dos almacenes posibles (VECTOR_STORE en .env):
+- "local" (por omisión): app/vectorstore.py, un archivo en data/vectores con búsqueda en numpy.
+  Sin código nativo propio, así que no tiene el fallo de Chroma en Windows.
+- "chroma": Chroma en data/chroma, para bases de conocimiento muy grandes.
+
+Todo se crea la primera vez que se usa: importar este módulo no abre el almacén ni se conecta
 a Ollama, lo que permite probar el resto del código sin los modelos.
 """
 import threading
@@ -11,6 +16,7 @@ COLLECTION = "conocimiento"
 
 _embed_client = None
 _chroma = None
+_local = None
 _lock = threading.Lock()
 
 
@@ -34,19 +40,25 @@ def embed(texts: list[str]) -> list[list[float]]:
 
 
 def collection():
-    global _chroma
+    global _chroma, _local
     with _lock:
-        if _chroma is None:
-            import chromadb
+        if config.VECTOR_STORE == "chroma":
+            if _chroma is None:
+                import chromadb
 
-            _chroma = chromadb.PersistentClient(path=str(config.CHROMA_DIR))
-        client = _chroma
-    return client.get_or_create_collection(COLLECTION, metadata={"hnsw:space": "cosine"})
+                _chroma = chromadb.PersistentClient(path=str(config.CHROMA_DIR))
+            return _chroma.get_or_create_collection(COLLECTION, metadata={"hnsw:space": "cosine"})
+        if _local is None:
+            from .vectorstore import LocalCollection
+
+            _local = LocalCollection(config.VECTORS_DIR)
+        return _local
 
 
 def reset() -> None:
-    """Olvida la conexión (la siguiente llamada abre config.CHROMA_DIR de nuevo). Para pruebas."""
-    global _chroma, _embed_client
+    """Olvida las conexiones (la siguiente llamada abre de nuevo el almacén configurado). Para pruebas."""
+    global _chroma, _local, _embed_client
     with _lock:
         _chroma = None
+        _local = None
         _embed_client = None

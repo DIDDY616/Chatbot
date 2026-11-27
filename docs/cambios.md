@@ -24,6 +24,14 @@ Qué se cambió y por qué. Cada punto dice qué requisito del encargo cubre o q
 | **Nombres de archivo con acentos corregidos** | "Ingeniería" daba "ingenier-a" en los nombres de archivo y de personajes; ahora da "ingenieria" |
 | **Herramientas evaluadas** ([herramientas.md](herramientas.md)) | Qué se revisó (Kokoro, MuseTalk, LatentSync, rerankers, bot oficial de Teams), qué se integró y qué conviene cuando haya un servidor con GPU |
 
+## Tercera ronda: almacén de vectores propio y Mac
+
+| Cambio | Por qué |
+|---|---|
+| **Almacén de vectores propio** (`app/vectorstore.py`), ahora el de omisión | Chroma se cae en algunas computadoras con Windows al guardar (fallo conocido, sin solución). El almacén propio guarda en `data/vectores` y busca con numpy: sin código nativo propio, en milisegundos para miles de fragmentos, con las mismas reglas de filtros que Chroma. Chroma sigue disponible con `VECTOR_STORE=chroma` |
+| **Las pruebas reflejan el comportamiento real de Chroma** | GitHub mostró que Chroma combina los metadatos al actualizar (no los reemplaza). El almacén propio hace lo mismo y hay una prueba de ese comportamiento |
+| **Soporte para Mac con Apple Silicon** | Los paquetes de CUDA no existen para Mac y hacían fallar la instalación; ahora solo se instalan en Windows y Linux. Se agregó `iniciar.sh` y la guía de Mac. El revisor ya no rechaza el Python de Mac |
+
 ## Seguridad
 
 | Cambio | Por qué |
@@ -70,13 +78,12 @@ Qué se cambió y por qué. Cada punto dice qué requisito del encargo cubre o q
 
 | Cambio | Por qué |
 |---|---|
-| **Pruebas unitarias con pytest** (`tests/unit/`, 140 al final de la segunda ronda) | Antes solo había scripts que necesitaban GPU, Ollama y la API encendida, así que casi nunca se corrían. Las nuevas simulan el modelo y los embeddings, usan Chroma real en una carpeta temporal y corren en segundos en cualquier computadora |
+| **Pruebas unitarias con pytest** (`tests/unit/`, 148 al final de la tercera ronda) | Antes solo había scripts que necesitaban GPU, Ollama y la API encendida, así que casi nunca se corrían. Las nuevas simulan el modelo y los embeddings, usan el almacén de vectores real en una carpeta temporal y corren en segundos en cualquier computadora. GitHub las corre con el almacén propio y con Chroma |
 | **Pruebas con modelos reales en `tests/integracion/`** | Separadas de las unitarias para que `pytest` no dependa de la GPU |
 | **ruff** (`pyproject.toml`) y **GitHub Actions** (`.github/workflows/pruebas.yml`) | Revisión de estilo y pruebas automáticas en cada push, para que un cambio no rompa algo sin que nadie lo note |
-| **Chroma simulado opcional** (`PRUEBAS_CHROMA=simulado`) | En una computadora con poca memoria libre Chroma no puede correr; así las pruebas se pueden correr igual |
 
 ## Lo que se verificó y lo que no
 
-- **Verificado:** las 140 pruebas unitarias pasan (con Chroma simulado: en la laptop donde se hizo la limpieza, Chroma no tenía memoria para correr; ver abajo), ruff sin errores, todo el código compila, la página del avatar carga en Edge sin errores de JavaScript con three.js local, y los pasos 1 y 2 del instalador eligen bien Python y modelos en una RTX 3050 de 6 GB.
+- **Verificado:** las 148 pruebas unitarias pasan en Windows con el almacén propio, y en GitHub (Linux) también con Chroma, ruff sin errores, todo el código compila, la página del avatar carga en Edge sin errores de JavaScript con three.js local, y los pasos 1 y 2 del instalador eligen bien Python y modelos en una RTX 3050 de 6 GB.
 - **No verificado todavía:** las pruebas con los modelos reales (`tests/integracion/`), la voz, el avatar hablando y la entrada a Teams después de estos cambios. Hay que correrlas en una computadora con los modelos instalados antes de dar la limpieza por buena.
-- **Hallazgo:** con muy poca memoria RAM libre (en esa laptop había 1 GB libre, con Android Studio y su emulador abiertos), Chroma se cierra con `access violation`. No es un error del proyecto, pero puede pasar en una demostración; está en los problemas comunes de [instalacion.md](instalacion.md#problemas-comunes).
+- **Hallazgo:** en la laptop de pruebas, Chroma se cerraba con `access violation` al guardar el primer fragmento, aun con memoria de sobra y en Python 3.12 y 3.13. Es un fallo conocido de Chroma en Windows ([#5392](https://github.com/chroma-core/chroma/issues/5392), [#6052](https://github.com/chroma-core/chroma/issues/6052)). Primero se creyó que era falta de memoria; no lo era. Por eso el almacén por omisión es ahora uno propio (ver la tercera ronda).

@@ -44,7 +44,8 @@ def _int(name: str, default: int) -> int:
 # ---------- Datos ----------
 DATA_DIR = BASE_DIR / "data"
 DOCS_DIR = DATA_DIR / "docs"                       # documentos fuente (subcarpeta = categoría)
-CHROMA_DIR = DATA_DIR / "chroma"                   # base vectorial (se regenera con la ingesta)
+VECTORS_DIR = DATA_DIR / "vectores"                # almacén de vectores propio (se regenera con la ingesta)
+CHROMA_DIR = DATA_DIR / "chroma"                   # solo con VECTOR_STORE=chroma
 LOG_FILE = DATA_DIR / "historial.jsonl"
 PROFILES_FILE = DATA_DIR / "perfiles.json"
 FAQS_FILE = DATA_DIR / "faqs.json"
@@ -88,6 +89,9 @@ CHATTERBOX_DEVICE = os.getenv("CHATTERBOX_DEVICE", "cuda")
 LANGUAGE_DETECT_CONFIDENCE = float(os.getenv("LANGUAGE_DETECT_CONFIDENCE", "0.8"))
 
 # ---------- RAG ----------
+# "local": almacén propio en data/vectores (por omisión; Chroma se cae en algunas computadoras con
+# Windows). "chroma": Chroma en data/chroma, para bases de conocimiento muy grandes.
+VECTOR_STORE = os.getenv("VECTOR_STORE", "local").lower()
 CHUNK_SIZE = 1000    # caracteres por fragmento
 CHUNK_OVERLAP = 150
 TOP_K = 5            # fragmentos recuperados por pregunta

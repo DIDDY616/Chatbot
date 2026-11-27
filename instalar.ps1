@@ -99,7 +99,9 @@ $Modelos = @($Llm, $Embed)
 Paso "3 de 7  Entorno de Python y librerias"
 if (-not (Test-Path $Py)) { & $Python[0] @($Python | Select-Object -Skip 1) -m venv .venv; Comprobar "al crear el entorno" }
 & $Py -m pip install --quiet --upgrade pip; Comprobar "al actualizar pip"
-& $Py -m pip install --quiet -r requirements.txt; Comprobar "al instalar las librerias"
+# Sin --quiet: son unos 3 GB y con las barras de descarga se ve que avanza.
+Write-Host "Descargando e instalando unos 3 GB de librerias; tarda de 10 a 25 minutos segun tu internet."
+& $Py -m pip install --progress-bar on -r requirements.txt; Comprobar "al instalar las librerias"
 if ($VozNatural) {
     & $Py -m pip install --quiet torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124; Comprobar "al instalar PyTorch"
     & $Py -m pip install --quiet -r requirements-voz-natural.txt; Comprobar "al instalar la voz natural"

@@ -11,6 +11,7 @@ __pycache__/
 
 # Datos generados (se regeneran con la ingesta o se descargan)
 data/chroma/
+data/vectores/
 data/voices/
 data/voces_clonadas/
 data/muestras/
@@ -18,3 +19,6 @@ web/avatars/
 data/historial.jsonl
 data/valoraciones.json
 *.log
+
+# Personajes subidos desde la consola (sus .glb están en web/avatars/, que tampoco se versiona)
+data/personajes.json

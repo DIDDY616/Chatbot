@@ -6,9 +6,9 @@ El prototipo demuestra que el recorrido completo funciona en una computadora. Pa
 
 **Base de conocimiento real.** Hoy solo hay dos documentos de ejemplo. Cargar planes de estudio, reglamentos y preguntas frecuentes vigentes, y nombrar a un responsable de mantenerlos al día por área. Un asistente con datos viejos es peor que no tener asistente.
 
-**Evaluación con preguntas reales.** Ampliar `tests/preguntas.jsonl` con preguntas que los estudiantes hacen de verdad y sus respuestas correctas, y correrla en cada cambio de documentos o de modelo. La lista de preguntas sin respuesta del historial es la mejor fuente.
+**Evaluación con preguntas reales.** Ampliar `tests/preguntas.jsonl` con preguntas que los estudiantes hacen de verdad y sus respuestas correctas, y correrla en cada cambio de documentos o de modelo. La lista de preguntas sin respuesta del historial (que ahora se descarga en CSV) es la mejor fuente.
 
-**Acceso a la consola.** Poner inicio de sesión institucional y roles (quién sube documentos, quién crea asistentes). Hoy cualquiera que llegue a la dirección puede administrar.
+**Acceso a la consola.** Ya hay una clave de administración (`ADMIN_TOKEN`) que protege la consola y las rutas de administración de la API. Falta el inicio de sesión institucional y los roles (quién sube documentos, quién publica, quién crea asistentes).
 
 **Aviso de privacidad.** El historial guarda las preguntas, y en reuniones se transcribe lo que dicen los participantes. Definir qué se guarda, cuánto tiempo y cómo se avisa. En reuniones, que el asistente se presente como programa al entrar.
 
@@ -20,9 +20,9 @@ El prototipo demuestra que el recorrido completo funciona en una computadora. Pa
 
 **Varias personas a la vez.** Ollama está pensado para uso personal y no se probó con usuarios simultáneos. Para muchos a la vez conviene un servidor de inferencia pensado para eso, como vLLM, que también ofrece la API de OpenAI.
 
-**Memoria de las conversaciones.** Hoy las sesiones viven en la memoria del proceso y se pierden al reiniciar. Guardarlas en una base de datos, igual que el historial, que hoy es un archivo.
+**Memoria de las conversaciones.** Las sesiones viven en la memoria del proceso, ya con límite de turnos, caducidad y tope (`app/sessions.py`), pero se pierden al reiniciar y no se comparten entre varios servidores. Guardarlas en una base de datos (Redis o SQL), igual que el historial, que hoy es un archivo.
 
-**Dependencias de la página.** La página del avatar carga three.js desde internet. Servirlo desde el propio servidor para no depender de terceros.
+**Dependencias de la página.** Resuelto: three.js se sirve desde `web/vendor/three/` (se actualiza con `python -m scripts.vendorizar_three`).
 
 **Despliegue.** Empaquetar en contenedores con los modelos ya descargados, para instalar igual en cualquier servidor.
 
@@ -48,7 +48,7 @@ Mientras tanto, lo más barato es pedir a TI que permita invitados anónimos en 
 
 **Voz.** La voz rápida suena sintética. La voz natural ya está integrada pero deja la GPU al límite; con un servidor de más memoria puede ser la voz por omisión.
 
-**Avatar.** Los personajes son de estilo caricatura. Si se busca un rostro realista, hay que evaluar generación de video, que es mucho más costosa en GPU.
+**Avatar.** Los personajes de ejemplo son de estilo caricatura. Ya se pueden subir personajes propios (`.glb`) desde la consola. Si se busca un rostro realista, hay que evaluar generación de video, que es mucho más costosa en GPU.
 
 **Respuestas con formato.** Mostrar en pantalla enlaces, tablas o pasos numerados además de decirlos.
 
@@ -66,7 +66,7 @@ El diseño ya separa lo que cambia de un servicio a otro:
 | A qué información accede | Acceso del perfil, por categoría o por documento |
 | Idioma | Perfil y selector de la página |
 
-Lo único fijo en el código es el encabezado de las instrucciones del modelo, que menciona al Tec y a la Escuela de Ingeniería y Ciencias (`SYSTEM_PROMPT` en `app/rag.py`). Para otra institución o escuela conviene volverlo un campo configurable.
+La institución que aparece en las instrucciones del modelo ya es configurable (`INSTITUTION` en `.env`). Las instrucciones completas están en `app/prompts.py`; después de cambiarlas hay que correr la evaluación.
 
 ## Orden sugerido
 

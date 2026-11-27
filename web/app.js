@@ -30,6 +30,7 @@ const BRIDGED = PARAMS.has("puente");
 const state = {
   meeting: PARAMS.has("reunion") || BRIDGED,
   bargeIn: recall("bargeIn") === "voice" ? "voice" : "name",  // qué interrumpe al asistente en reunión
+  autoLanguage: recall("autoLanguage") !== "off",  // al hablar, contesta en el idioma que oye
   micId: recall("micId"),
   outputId: recall("outputId"),
   profiles: {},
@@ -103,6 +104,45 @@ function clearDialog() {
   show("user-line", "");
   show("subtitle", "");
   show("meta", "");
+  hideFeedback();
+}
+
+// ---------- Valoración (👍 / 👎) ----------
+
+let feedbackId = null;  // respuesta que se está valorando (id del historial)
+
+function hideFeedback() {
+  feedbackId = null;
+  $("feedback").hidden = true;
+}
+
+function offerFeedback(id) {
+  if (!id || state.meeting) return;
+  feedbackId = id;
+  $("feedback-label").textContent = t("useful");
+  for (const button of $("feedback").querySelectorAll("button")) {
+    button.disabled = false;
+    button.setAttribute("aria-pressed", "false");
+  }
+  $("feedback").hidden = false;
+}
+
+async function sendFeedback(button) {
+  const id = feedbackId;
+  if (!id) return;
+  for (const b of $("feedback").querySelectorAll("button")) b.disabled = true;
+  button.setAttribute("aria-pressed", "true");
+  try {
+    await api(`/feedback/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: button.dataset.rating }),
+    });
+    if (id === feedbackId) $("feedback-label").textContent = t("thanks");
+  } catch (error) {
+    console.error(error);
+    for (const b of $("feedback").querySelectorAll("button")) b.disabled = false;
+    button.setAttribute("aria-pressed", "false");
+  }
 }
 
 function fillSelect(el, entries, selected) {
@@ -288,6 +328,7 @@ async function ask(text) {
   show("user-line", text);
   show("subtitle", "");
   show("meta", "");
+  hideFeedback();
   setStatus("thinking");
   head.lookAtCamera(600);
   try {
@@ -297,9 +338,13 @@ async function ask(text) {
     const speaker = createSpeaker(turn);
     for await (const event of readEvents(resp)) {
       if (turn !== state.turn) return;
-      if (event.type === "delta") speaker.add(event.text);
-      else if (!event.answered) show("meta", t("noInfo"), "meta warning");
+      if (event.type === "delta") {
+        speaker.add(event.text);
+        continue;
+      }
+      if (!event.answered) show("meta", t("noInfo"), "meta warning");
       else if (event.sources.length) show("meta", `${t("sources")}: ${event.sources.join(", ")}`, "meta");
+      if (event.intent === "consulta") offerFeedback(event.id);
     }
     await speaker.finish();
   } catch (error) {
@@ -378,9 +423,16 @@ async function onRecorded() {
   try {
     const form = new FormData();
     form.append("audio", new Blob(chunks, { type: recorder.mimeType }), "pregunta.webm");
-    const resp = await api(`/stt?language=${state.language}`, { method: "POST", body: form });
-    const { text } = await resp.json();
+    // Con detección automática Whisper reconoce el idioma y la API dice si conviene cambiarlo
+    // (solo a uno de los cinco del asistente y si está seguro).
+    const query = state.autoLanguage ? `current=${state.language}` : `language=${state.language}`;
+    const resp = await api(`/stt?${query}`, { method: "POST", body: form });
+    const { text, reply_language: replyLanguage } = await resp.json();
     if (turn !== state.turn) return;
+    if (text && replyLanguage && replyLanguage !== state.language && LANGUAGES[replyLanguage]) {
+      await setLanguage(replyLanguage, { clear: false });
+      if (turn !== state.turn) return;
+    }
     if (text) return ask(text);
     toast(t("notHeard"));
     finishTurn();
@@ -395,8 +447,7 @@ async function onRecorded() {
 // El micrófono queda abierto oyendo la reunión. El asistente solo contesta las frases que lo
 // nombran. Mientras habla se calla si lo nombran (o, según la configuración, con cualquier voz).
 
-// En reunión el título de la ventana es fijo: OBS la encuentra por ese título para capturarla
-// (scripts/preparar_obs.py usa el mismo).
+// En reunión el título de la ventana es fijo, para reconocerla entre las del navegador.
 function setTitle() {
   document.title = state.meeting ? MEETING_TITLE : profile()?.name ?? "Asistente Tec";
 }
@@ -564,6 +615,16 @@ async function refreshVoices() {
   fillSelect($("voice"), voices.map((v) => [v, v]), state.voice);
 }
 
+// Cambia el idioma de la interfaz, de la voz y de las respuestas.
+async function setLanguage(code, { clear = true } = {}) {
+  state.language = code;
+  $("language").value = code;
+  applyTexts();
+  if (clear) clearDialog();
+  refreshDevices().catch(console.warn);  // traduce la opción "predeterminado"
+  await refreshVoices().catch(reportError);
+}
+
 async function applyProfile(id) {
   state.profileId = id;
   const p = profile();
@@ -611,12 +672,13 @@ function bindSettings() {
   $("profile").onchange = (ev) => applyProfile(ev.target.value).catch(reportError);
   $("language").onchange = async (ev) => {
     interrupt();
-    state.language = ev.target.value;
-    applyTexts();
-    clearDialog();
-    refreshDevices().catch(console.warn);  // traduce la opción "predeterminado"
-    await refreshVoices().catch(reportError);
+    await setLanguage(ev.target.value);
     setStatus("idle");
+  };
+  $("auto-language").checked = state.autoLanguage;
+  $("auto-language").onchange = (ev) => {
+    state.autoLanguage = ev.target.checked;
+    remember("autoLanguage", state.autoLanguage ? "on" : "off");
   };
   $("character").onchange = (ev) => {
     state.avatarId = ev.target.value;
@@ -651,6 +713,7 @@ function reportError(error) {
 
 function bindControls() {
   $("mic").onclick = () => (listening ? stopListening(true) : listen());
+  for (const button of $("feedback").querySelectorAll("button")) button.onclick = () => sendFeedback(button);
   $("ask-form").onsubmit = (ev) => {
     ev.preventDefault();
     const text = $("question").value;
@@ -686,7 +749,6 @@ async function start() {
       lightAmbientIntensity: 2.4,
       lightDirectIntensity: 26,
     });
-    window.assistant = { state, head, ask, listen, interrupt, setMeeting };  // para depurar desde la consola
     await initLipsync();
     warmup();
     if (BRIDGED) {
@@ -735,7 +797,7 @@ async function init() {
     $("start-button").disabled = false;
     $("start-button").onclick = start;
     // Con ?auto arranca sin pulsar Comenzar. Solo sirve si el navegador se abrió permitiendo
-    // audio sin interacción, como hace scripts/avatar_reunion.bat.
+    // audio sin interacción, como hace app/teams.py.
     if (PARAMS.has("auto") || BRIDGED) start();
   } catch (error) {
     console.error(error);

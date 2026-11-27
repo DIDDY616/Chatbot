@@ -20,11 +20,13 @@ Guion para mostrar, en unos 15 minutos, cada punto que el encargo pide demostrar
 | 6 | En Configuración cambia el idioma a English y pregunta "What time does the library open?" | Operación en inglés |
 | 7 | En Configuración cambia el personaje y la voz | Personalización de avatar y voz |
 | 8 | En Configuración elige el asistente "Asesor ITC" y repite la pregunta 1 | Otro perfil: trato de usted y otro personaje |
-| 9 | En la consola, **Documentos**: sube un archivo de texto con un dato nuevo y pregunta por él | Actualización de la base de conocimiento sin tocar código |
+| 9 | En la consola, **Documentos**: sube un archivo de texto con un dato nuevo (queda en borrador). Pregunta por él en la página del avatar: todavía no lo sabe. Pruébalo en **Probar** con borradores y luego publícalo; vuelve a preguntar en el avatar | Actualización de la base de conocimiento sin tocar código, probando antes de publicar |
 | 10 | En la consola, **Preguntas frecuentes**: agrega una y pregunta por ella | Gestión de preguntas frecuentes |
 | 11 | En la consola, **Asistentes**: limita un asistente a una categoría y pregunta algo de otra | Acceso a la información según el rol |
-| 12 | En la consola, **Probar**: haz una pregunta y abre los fragmentos | Prueba antes de publicar |
-| 13 | En la consola, **Historial** | Preguntas sin respuesta, estadísticas y valoraciones |
+| 12 | En la consola, **Probar**: haz una pregunta y abre los fragmentos; escribe "Hola" y mira que la intención sale como saludo, sin fragmentos | Prueba antes de publicar e identificación de la intención |
+| 12b | En la consola, **Personajes**: sube un `.glb` propio y asígnalo a un asistente | Personalización del rostro |
+| 12c | En la página del avatar, con "Detectar el idioma al hablar" activado, pregunta en inglés por voz sin cambiar el idioma | Detección del idioma para estudiantes de intercambio |
+| 13 | Marca una respuesta con 👍 en la página del avatar y abre **Historial** en la consola; descarga el CSV | Preguntas sin respuesta, estadísticas, valoraciones de estudiantes y reportes |
 | 14 | En la consola, **Reuniones**: pega el enlace de una reunión y admítelo | Integración con Teams |
 | 15 | En la reunión: "TecBot, ¿qué horario tiene la biblioteca?" | Escucha, contesta y se ve en la reunión |
 
@@ -39,28 +41,34 @@ Para el paso 14 usa una reunión de Teams personal y entra tú primero. Detalles
 | Base de conocimiento con RAG | Cumplido | Pasos 1, 9 y 12 |
 | Respuesta mediante avatar con voz | Cumplido | Paso 2 |
 | Operación en español e inglés | Cumplido, más francés, sueco y alemán | Paso 6 |
-| Personalización de avatar y voz | Cumplido | Pasos 7 y 8 |
-| Consola de administración | Cumplido | Pasos 9 a 13 |
+| Personalización de avatar y voz | Cumplido, con personajes propios | Pasos 7, 8 y 12b |
+| Consola de administración | Cumplido, con borradores y clave de administración | Pasos 9 a 13 |
+| Probar antes de publicar | Cumplido | Pasos 9 y 12 |
+| Identificación de la intención | Cumplido (cortesía frente a consulta) | Paso 12 |
 | Evidencia de integración con Teams | Cumplido en reuniones personales | Pasos 14 y 15 |
 | Varios turnos con contexto | Cumplido | Paso 3 |
 | Indicar cuando no sabe | Cumplido | Paso 4 |
 
-Funciones deseables de la consola: historial, preguntas sin respuesta, estadísticas, valoraciones y varios asistentes están incluidas.
+Funciones deseables de la consola: historial, preguntas sin respuesta, estadísticas, valoraciones (de la consola y de los estudiantes) y varios asistentes están incluidas.
 
 ## Pruebas automáticas
 
-Respaldan la demostración y se pueden repetir en cualquier momento. Todas necesitan el asistente encendido, salvo la del nombre.
+Respaldan la demostración y se pueden repetir en cualquier momento.
+
+**Unitarias (sin modelos ni GPU).** `pytest` corre 148 pruebas: lectura de los siete formatos, fragmentación, configuración, intención, sesiones, activación por nombre (incluidas las frases que antes estaban en `tests.nombre`), borradores y publicación, acceso por asistente, historial, personajes, clave de administración, búsqueda híbrida, importación de páginas web, el almacén de vectores y la API completa con modelos simulados. GitHub las corre en cada push.
+
+**Con los modelos reales.** Necesitan Ollama y, las marcadas, la API encendida.
 
 | Comando | Qué comprueba | Último resultado |
 |---|---|---|
-| `python -m tests.eval` | 17 preguntas con respuesta esperada: datos correctos, seguimiento, negativas, nombres aproximados | 17 de 17 |
-| `python -m tests.acceso` | Cada asistente solo usa los documentos que tiene asignados | 6 de 6 |
-| `python -m tests.nombre` | Detección del nombre, órdenes de alto y preguntas de presencia | Sin fallas |
-| `python -m tests.nombre --voz` | Lo mismo con frases sintetizadas y transcritas | 58 a 59 de 60, según la corrida |
-| `python -m tests.puente` | Reunión simulada: el avatar llega como cámara, la voz como micrófono, oye y contesta | 8 de 8 |
-| `python -m scripts.revisar` | Que la instalación esté completa | Todo listo |
+| `python -m tests.integracion.eval` | 17 preguntas con respuesta esperada: datos correctos, seguimiento, negativas, nombres aproximados | 17 de 17 con `gemma3:12b` (antes de la limpieza) |
+| `python -m tests.integracion.acceso` | Cada asistente solo usa los documentos que tiene asignados (API encendida) | 6 de 6 (antes de la limpieza) |
+| `python -m tests.integracion.nombre_voz` | Detección del nombre con frases sintetizadas y transcritas | 58 a 59 de 60, según la corrida |
+| `python -m tests.integracion.voz` | Voz ida y vuelta en los cinco idiomas | |
+| `python -m tests.integracion.puente` | Reunión simulada: el avatar llega como cámara, la voz como micrófono, oye y contesta (API encendida) | 8 de 8 (antes de la limpieza) |
+| `python -m scripts.revisar` | Que la instalación esté completa | |
 
-Ejecuta los comandos con el Python del entorno: `.\.venv\Scripts\python.exe -m tests.eval`.
+Ejecuta los comandos con el Python del entorno: `.\.venv\Scripts\python.exe -m tests.integracion.eval`. Después de la limpieza del código hay que volver a correr las de esta tabla: los resultados que aparecen son de antes.
 
 ## Qué no cubre la demostración
 

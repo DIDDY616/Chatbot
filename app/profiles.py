@@ -4,28 +4,40 @@ Se guardan en data/perfiles.json y se leen en cada petición, así que los cambi
 aplican sin reiniciar el servidor.
 """
 import json
+import re
+import threading
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from . import config
 
 DEFAULT_PROFILE = "tecbot"
+ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
+_lock = threading.Lock()
 
 
 class Profile(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=60)
     description: str = ""
     role: str = ""                   # su función: para qué sirve y a quién atiende
     personality: str = ""            # tono y forma de hablar; no cambia las reglas del RAG
     greeting: str = ""               # saludo inicial, en el idioma predeterminado
     language: str = "es"
-    engine: str = "piper"            # motor de voz: "piper" o "chatterbox"
+    engine: Literal["piper", "chatterbox"] = "piper"
     voices: dict[str, str] = {}      # voz por idioma, p. ej. {"es": "es_MX-claude-high"}
-    avatar: str = ""                 # id de web/avatars.json
+    avatar: str = ""                 # id de un personaje (ver app/avatars.py)
     mood: str = "neutral"            # expresión base del avatar
     categories: list[str] = []       # categorías completas que puede consultar
     documents: list[str] = []        # documentos sueltos que puede consultar, además de las categorías
     wake_words: list[str] = []       # nombres a los que responde en una reunión; vacío = su nombre
+
+    @field_validator("language")
+    @classmethod
+    def _known_language(cls, value: str) -> str:
+        if value not in config.LANGUAGES:
+            raise ValueError(f"Idioma no soportado: {value}. Usa uno de {', '.join(config.LANGUAGES)}")
+        return value
 
     def wake_names(self) -> list[str]:
         return self.wake_words or [self.name]
@@ -45,6 +57,10 @@ class Profile(BaseModel):
         return rules[0] if len(rules) == 1 else {"$or": rules}
 
 
+def valid_id(profile_id: str) -> bool:
+    return bool(ID_PATTERN.match(profile_id))
+
+
 def load() -> dict[str, Profile]:
     if not config.PROFILES_FILE.exists():
         return {DEFAULT_PROFILE: Profile(name=config.ASSISTANT_NAME)}
@@ -62,17 +78,24 @@ def get(profile_id: str) -> Profile:
 
 
 def save(profile_id: str, profile: Profile) -> None:
-    profiles = load()
-    profiles[profile_id] = profile
-    _write(profiles)
+    if not valid_id(profile_id):
+        raise ValueError("Identificador no válido: minúsculas, números, - o _, sin espacios (hasta 40)")
+    with _lock:
+        profiles = load()
+        profiles[profile_id] = profile
+        _write(profiles)
 
 
 def delete(profile_id: str) -> None:
-    profiles = load()
-    profiles.pop(profile_id, None)
-    _write(profiles)
+    with _lock:
+        profiles = load()
+        if len(profiles) <= 1 and profile_id in profiles:
+            raise ValueError("Debe quedar al menos un asistente")
+        profiles.pop(profile_id, None)
+        _write(profiles)
 
 
 def _write(profiles: dict[str, Profile]) -> None:
+    config.PROFILES_FILE.parent.mkdir(parents=True, exist_ok=True)
     data = {key: value.model_dump() for key, value in profiles.items()}
     config.PROFILES_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -16,12 +16,20 @@ import time
 from pathlib import Path
 from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 
-from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import sync_playwright
+from . import config
+
+try:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
+except ImportError:  # sin Playwright la API funciona igual; solo no puede entrar a reuniones
+    sync_playwright = None
+
+    class PlaywrightError(Exception):
+        pass
 
 log = logging.getLogger("uvicorn.error")
 
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+API_URL = config.API_URL
 INJECT = Path(__file__).with_name("teams_puente.js")
 # Navegadores a probar, en orden. Con TEAMS_BROWSER=chromium se usa el Chromium propio de
 # Playwright (hay que instalarlo con "playwright install chromium"), que no conoce las cuentas
@@ -29,8 +37,9 @@ INJECT = Path(__file__).with_name("teams_puente.js")
 CHANNELS = [c for c in (os.getenv("TEAMS_BROWSER"), "chrome", "msedge") if c]
 GUEST_ONLY = ("El asistente solo entra como invitado y nunca con una cuenta de esta computadora, "
               "así que canceló la entrada.")
-# Diagnóstico: carpeta donde cada pocos segundos se guarda una captura de Teams y el estado del puente.
-DEBUG_DIR = Path(os.environ["TEAMS_CAPTURAS"]) if os.getenv("TEAMS_CAPTURAS") else None
+# Diagnóstico (TEAMS_CAPTURAS en .env): carpeta donde cada pocos segundos se guarda una captura de
+# Teams y el estado del puente. Sirve para ver en qué pantalla se atoró si Microsoft cambia la página.
+DEBUG_DIR = Path(config.TEAMS_CAPTURAS) if config.TEAMS_CAPTURAS else None
 
 # Comunes a los dos navegadores: siguen dibujando aunque otra ventana los tape, permiten audio
 # sin que nadie pulse nada, y no sacan sonido por las bocinas de esta máquina.
@@ -327,6 +336,8 @@ _lock = threading.Lock()
 
 def join(url: str, profile: str, name: str) -> dict:
     global _current
+    if sync_playwright is None:
+        raise ValueError("Falta Playwright: ejecuta pip install -r requirements.txt")
     with _lock:
         if _current and _current.is_alive():
             raise ValueError("El asistente ya está en una reunión. Sácalo antes de entrar a otra.")

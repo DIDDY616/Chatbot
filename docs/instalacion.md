@@ -7,28 +7,31 @@
 | Componente | Mínimo | Probado |
 |---|---|---|
 | Sistema | Windows 10 u 11 de 64 bits | Windows 11 |
-| GPU | NVIDIA con 12 GB de memoria | RTX 4090 de laptop, 16 GB |
-| Memoria RAM | 16 GB | |
+| GPU | NVIDIA con 6 GB de memoria (12 GB para el modelo grande) | RTX 4090 de laptop, 16 GB |
+| Memoria RAM | 16 GB, con unos 6 GB libres al encender | |
 | Disco | 25 GB libres | |
 | Micrófono y bocinas | Para conversar por voz | |
-| Internet | Para instalar y para cargar la página del avatar | |
+| Internet | Solo para instalar | |
 
-La instalación ocupa unos 15 GB: 9.4 GB de modelos de lenguaje, 2.9 GB de librerías de Python, 1.6 GB del modelo de reconocimiento de voz y 0.7 GB de voces. Con la voz natural son unos 5 GB más.
+La instalación ocupa unos 15 GB con el modelo grande: 9.4 GB de modelos de lenguaje, 2.9 GB de librerías de Python, 1.6 GB del modelo de reconocimiento de voz y 0.7 GB de voces. Con `gemma3:4b` son unos 6 GB menos. Con la voz natural son unos 5 GB más.
 
-La GPU es necesaria para conversar por voz con fluidez. La configuración por omisión ocupa unos 11.7 GB de memoria de video. La explicación completa está en [arquitectura.md](arquitectura.md#por-qué-gpu-y-por-qué-local).
+La GPU es necesaria para conversar por voz con fluidez. La configuración grande ocupa unos 11.7 GB de memoria de video. La explicación completa está en [arquitectura.md](arquitectura.md#por-qué-gpu-y-por-qué-local).
 
-Con menos de 12 GB hay que usar un modelo de lenguaje más chico, por ejemplo `gemma3:4b` (ver [Configuración](#configuración)). Esa combinación no se ha probado en este proyecto.
+Con menos de 12 GB el instalador elige solo un modelo de lenguaje más chico (`gemma3:4b`) y un Whisper más chico (`small`). Esa combinación todavía no se ha medido en este proyecto: espera respuestas algo menos precisas, sobre todo con nombres aproximados de carreras.
+
+**Memoria RAM libre.** Con poca memoria libre (por ejemplo, con emuladores, máquinas virtuales o muchas pestañas abiertas) los modelos no caben y todo va lento o se cierra. Deja unos 6 GB libres antes de encender el asistente.
 
 ### Programas
 
 | Programa | Para qué | Lo instala el script |
 |---|---|---|
-| Python 3.10 o posterior | Ejecutar el asistente | No |
+| Python 3.10 a 3.13 de python.org (de preferencia 3.12) | Ejecutar el asistente | No |
 | Controladores de NVIDIA | Usar la GPU | No |
+| Visual C++ Redistributable 2015-2022 | Lo necesita onnxruntime (voz de Piper) | Sí, si aceptas |
 | Ollama | Ejecutar el modelo de lenguaje | Sí, si aceptas |
 | Chrome o Edge | Página del avatar y entrada a Teams | No (Edge viene con Windows) |
 
-Al instalar Python, marca la casilla "Add python.exe to PATH".
+La forma más simple de instalar Python es `winget install -e --id Python.Python.3.12`. No sirve el Python de MSYS2, Cygwin o Git Bash: para ese no existen las librerías compiladas de reconocimiento de voz ni de Piper. Tampoco Python 3.14, que todavía es demasiado nuevo para varias de ellas. El instalador busca solo un Python que sirva y descarta los demás.
 
 ## Instalación rápida
 
@@ -42,11 +45,11 @@ powershell -ExecutionPolicy Bypass -File instalar.ps1
 
 El script hace siete pasos y avisa en cuál va:
 
-1. Comprueba la versión de Python.
-2. Detecta la GPU y avisa si tiene poca memoria.
+1. Busca un Python que sirva (3.10 a 3.13 de python.org, de preferencia 3.12).
+2. Detecta la GPU y, si no existe `.env`, lo crea con los modelos que caben: `gemma3:12b` y Whisper `large-v3-turbo` con 12 GB o más, `gemma3:4b` y Whisper `small` con menos, y Whisper en procesador si no hay GPU NVIDIA.
 3. Crea el entorno de Python en `.venv` e instala las librerías.
-4. Instala Ollama si falta (pregunta antes) y descarga los modelos `gemma3:12b` y `bge-m3`.
-5. Descarga las voces.
+4. Instala Ollama si falta (pregunta antes) y descarga el modelo de lenguaje de `.env` y `bge-m3`.
+5. Descarga las voces y el modelo de reconocimiento de voz (con reintentos si una descarga se atora).
 6. Descarga los personajes 3D.
 7. Indexa los documentos de `data/docs` y revisa que todo esté completo.
 
@@ -96,21 +99,23 @@ Lista cada requisito como `OK`, `AVISO` o `FALTA`, y dice qué comando ejecutar 
 Para quien prefiera hacerlo paso a paso o esté en otra plataforma.
 
 ```powershell
-python -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env     # y ajusta LLM_MODEL y WHISPER_MODEL a tu GPU
 ```
 
-Instala Ollama desde `https://ollama.com/download` y descarga los modelos:
+Instala Ollama desde `https://ollama.com/download` y descarga los modelos (el de lenguaje es el que pusiste en `.env`):
 
 ```powershell
-ollama pull gemma3:12b
+ollama pull gemma3:12b     # o gemma3:4b con menos de 12 GB
 ollama pull bge-m3
 ```
 
 Descarga las voces y los personajes:
 
 ```powershell
-.\.venv\Scripts\python.exe -m piper.download_voices es_MX-claude-high en_US-lessac-medium --download-dir data\voices
+.\.venv\Scripts\python.exe -m scripts.descargar_voces es_MX-claude-high en_US-lessac-medium
+.\.venv\Scripts\python.exe -m scripts.descargar_whisper
 .\.venv\Scripts\python.exe -m scripts.descargar_avatares
 ```
 
@@ -140,32 +145,103 @@ Enciende la API y la consola, cada una en su terminal:
 
 Con la voz natural y el avatar a la vez, la GPU de 16 GB queda al límite (unos 15.5 GB) y las respuestas salen más lentas.
 
+## Mac con Apple Silicon (M1 a M4)
+
+`instalar.ps1` e `iniciar.bat` son solo para Windows. En Mac se instala a mano y se enciende con `iniciar.sh`. Todas las librerías existen para Apple Silicon (se comprobó que hay versiones compiladas de faster-whisper, CTranslate2, Piper, onnxruntime, PyAV y Playwright para macOS arm64), pero **el asistente completo todavía no se ha encendido en una Mac**: trátalo como primera prueba.
+
+Diferencias con Windows:
+
+- **Ollama usa la GPU del Mac** (Metal) y la memoria unificada: el modelo de lenguaje suele ir más rápido que en una laptop con GPU de 6 GB.
+- **Whisper va en el procesador**: faster-whisper no tiene versión para la GPU del Mac. Con el modelo `small` en un M4 se espera alrededor de un segundo por frase (sin medir).
+- Memoria: con 16 GB usa `gemma3:4b`; con 24 GB o más, `gemma3:12b`.
+
+### Pasos
+
+```bash
+# 1. Herramientas (con Homebrew: https://brew.sh)
+brew install python@3.12 git
+brew install --cask ollama google-chrome     # o Microsoft Edge en lugar de Chrome
+
+# 2. Proyecto
+git clone https://github.com/DIDDY616/Chatbot.git && cd Chatbot
+git checkout explect
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+
+# 3. Configuración: copia el ejemplo y deja estas líneas (ver .env.example)
+cp .env.example .env
+#   LLM_MODEL=gemma3:4b      (o gemma3:12b con 24 GB)
+#   WHISPER_MODEL=small
+#   WHISPER_DEVICE=cpu
+#   WHISPER_COMPUTE=int8
+
+# 4. Modelos, voces, personajes e índice (abre la app de Ollama antes)
+ollama pull gemma3:4b
+ollama pull bge-m3
+.venv/bin/python -m scripts.descargar_voces es_MX-claude-high en_US-lessac-medium es_MX-ald-medium en_US-ryan-medium fr_FR-siwis-medium sv_SE-nst-medium de_DE-thorsten-medium
+.venv/bin/python -m scripts.descargar_whisper
+.venv/bin/python -m scripts.descargar_avatares
+.venv/bin/python -m app.ingest
+.venv/bin/python -m scripts.revisar
+
+# 5. Encender (Ctrl+C para apagar)
+chmod +x iniciar.sh
+./iniciar.sh
+```
+
+La primera vez que la página del avatar pida el micrófono, macOS pregunta si el navegador puede usarlo: acepta. Para entrar a Teams no hace falta dar permisos de cámara: el asistente usa dispositivos simulados dentro del navegador.
 ## Configuración
 
-Se configura con variables de entorno antes de encender la API. Sin ellas se usan los valores por omisión.
+Todo se configura en el archivo `.env` de la raíz del proyecto. El instalador lo crea a partir de `.env.example`; para hacerlo a mano, copia ese archivo como `.env`. No hay que reiniciar Windows ni usar `setx`: basta con apagar y volver a encender el asistente. Una variable definida en la terminal gana sobre `.env`.
 
 | Variable | Por omisión | Qué controla |
 |---|---|---|
-| `LLM_MODEL` | `gemma3:12b` | Modelo de lenguaje |
+| `LLM_MODEL` | `gemma3:12b` | Modelo de lenguaje (`gemma3:4b` con 6 a 8 GB de GPU) |
 | `LLM_BASE_URL` | `http://127.0.0.1:11434/v1` | Servidor del modelo de lenguaje |
 | `EMBED_MODEL` | `bge-m3` | Modelo para buscar en los documentos |
 | `EMBED_BASE_URL` | `http://127.0.0.1:11434/v1` | Servidor de ese modelo |
-| `WHISPER_MODEL` | `large-v3-turbo` | Modelo de reconocimiento de voz |
+| `WHISPER_MODEL` | `large-v3-turbo` | Modelo de reconocimiento de voz (`small` con poca GPU) |
 | `WHISPER_DEVICE` | `cuda` | `cuda` para GPU, `cpu` para procesador |
 | `WHISPER_COMPUTE` | `int8_float16` | Precisión del reconocimiento; en CPU usar `int8` |
 | `CHATTERBOX_DEVICE` | `cuda` | Dispositivo de la voz natural |
+| `INSTITUTION` | `Tecnológico de Monterrey (Escuela de Ingeniería y Ciencias)` | Institución que aparece en las instrucciones al modelo |
 | `ASSISTANT_NAME` | `TecBot` | Nombre del asistente si no hay perfiles |
+| `ADMIN_TOKEN` | (vacío) | Clave de la consola y de las rutas de administración de la API |
+| `SESSION_TTL_MINUTES` | `60` | Minutos sin actividad tras los que se olvida una conversación |
+| `MAX_UPLOAD_MB` | `50` | Tamaño máximo de un archivo subido |
+| `LANGUAGE_DETECT_CONFIDENCE` | `0.8` | Qué tan seguro debe estar Whisper para cambiar de idioma solo |
+| `VECTOR_STORE` | `local` | Almacén de vectores: `local` (archivo propio) o `chroma` |
+| `HYBRID_SEARCH` | `true` | Búsqueda por significado y por palabras exactas; `false` vuelve a solo significado |
 | `TEAMS_BROWSER` | (Chrome, luego Edge) | Navegador para entrar a reuniones: `chrome`, `msedge` o `chromium` |
-
-Ejemplo, para usar un modelo más chico:
-
-```powershell
-$env:LLM_MODEL = "gemma3:4b"
-```
 
 Las variables `LLM_BASE_URL` y `EMBED_BASE_URL` permiten apuntar a un servidor con GPU en lugar de a la misma computadora. Cualquier servidor compatible con la API de OpenAI sirve.
 
+### Clave de administración
+
+Sin `ADMIN_TOKEN`, cualquiera que llegue a la consola o a la API puede subir y borrar documentos. Para usarlo con más gente en la red, pon una clave larga:
+
+```
+ADMIN_TOKEN=una-clave-larga-y-dificil
+```
+
+Con la clave, la consola la pide al abrirla y la API rechaza las rutas de administración sin el encabezado `X-Admin-Token`. La página del avatar sigue abierta, porque los estudiantes no tienen clave.
+
 Los asistentes, sus voces, sus personajes y su acceso a documentos no se configuran aquí, sino en la consola. Ver [manual_consola.md](manual_consola.md).
+
+## Pruebas
+
+Las pruebas unitarias no necesitan GPU, Ollama ni Whisper: simulan los modelos y usan una base vectorial temporal.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check app scripts tests
+```
+
+Por omisión las pruebas usan el almacén de vectores propio. Con `$env:PRUEBAS_VECTORES = "chroma"` usan Chroma (en algunas computadoras con Windows Chroma se cae al guardar; ver los problemas comunes).
+
+Las pruebas con los modelos reales están en [demostracion.md](demostracion.md#pruebas-automáticas).
 
 ## Problemas comunes
 
@@ -174,9 +250,15 @@ Los asistentes, sus voces, sus personajes y su acceso a documentos no se configu
 | "No se pudo conectar con Ollama" | Ollama está cerrado | Ábrelo o ejecuta `iniciar.bat` |
 | Error de puerto en uso al encender | Ya hay una API o consola encendida | Cierra la ventana anterior |
 | Las respuestas tardan unos 10 segundos | Se usa `localhost` en lugar de `127.0.0.1` en la configuración | Deja las direcciones por omisión; en Windows `localhost` agrega unos 2 segundos por conexión |
+| La API se cierra sola al indexar, con `access violation` | Usas `VECTOR_STORE=chroma` y Chroma tiene un fallo en algunas computadoras con Windows ([#5392](https://github.com/chroma-core/chroma/issues/5392)) | Quita `VECTOR_STORE=chroma` de `.env` (vuelve al almacén propio) y reindexa |
+| Todo va muy lento o la API se cierra | Poca memoria RAM libre | Cierra programas pesados (emuladores, máquinas virtuales, muchas pestañas) |
+| `DLL load failed while importing onnxruntime_pybind11_state` o la voz no funciona | Falta el Visual C++ Redistributable de Microsoft | `winget install -e --id Microsoft.VCRedist.2015+.x64` (el instalador ya lo revisa y lo ofrece) |
+| El instalador dice que no encuentra Python | Solo hay un Python de MSYS2, Git Bash o 3.14 | `winget install -e --id Python.Python.3.12` |
+| `CUDA out of memory` al hablar | La GPU no alcanza para el modelo y Whisper | En `.env` usa `LLM_MODEL=gemma3:4b` y `WHISPER_MODEL=small`, o `WHISPER_DEVICE=cpu` con `WHISPER_COMPUTE=int8` |
 | La API se cierra con "Could not load symbol cudnnGetLibConfig" | Dos versiones de cuDNN cargadas | Ya está resuelto en `app/voice.py`; si reaparece, reinstala con `instalar.ps1` |
 | Error `av.open() got unexpected keyword` | Versión nueva de PyAV | `requirements.txt` ya fija `av<16`; reinstala las librerías |
-| El avatar no aparece | Sin internet, o falta descargar los personajes | La página carga three.js desde internet; ejecuta `python -m scripts.descargar_avatares` |
+| El avatar no aparece | Faltan los personajes | `python -m scripts.descargar_avatares` |
+| La consola dice "Falta la clave de administración" | `ADMIN_TOKEN` cambió en `.env` | Vuelve a abrir la consola y escribe la clave nueva |
 | No se puede borrar un Excel desde la consola | El archivo está abierto en otro programa | Ciérralo e inténtalo de nuevo |
 | El micrófono no funciona en la página | Permiso denegado en el navegador | Permite el micrófono para `localhost:8000` |
 
@@ -186,5 +268,5 @@ Los asistentes, sus voces, sus personajes y su acceso a documentos no se configu
 - La copia recién instalada se encendió y contestó una pregunta por texto, sintetizó voz y la reconoció en GPU.
 - Ollama y sus modelos ya estaban instalados, así que la descarga de modelos (9.4 GB) y la instalación de Ollama con winget no se ejercitaron.
 - Las opciones sin `-Minimo` y `-VozNatural` no se probaron en la copia limpia; la instalación de desarrollo usa esas mismas librerías y voces.
-- No se ha probado en otra computadora, ni en Linux o macOS.
-- No se ha probado sin GPU ni con una GPU de menos de 16 GB.
+- La versión 0.2 se instaló desde cero en Windows 11 con una GPU de 6 GB, incluida la instalación de Ollama y del Visual C++ Redistributable con winget y la descarga de modelos: el instalador eligió `gemma3:4b` y Whisper `small`, y el asistente funcionó de punta a punta (avatar, voz y consola).
+- No se ha probado en Linux o macOS, ni sin GPU.

@@ -25,7 +25,7 @@ for _sp in site.getsitepackages():
 
 ENGINES = ("piper", "chatterbox")
 DEFAULT_CLONE = "predeterminada"  # voz incluida en Chatterbox, sin audio de referencia
-LANGUAGE_CODES = ("es", "en", "fr", "sv", "de")
+LANGUAGE_CODES = tuple(config.LANGUAGES)  # es, en, fr, sv, de
 
 _whisper = None
 _piper_voices: dict = {}
@@ -56,7 +56,23 @@ def transcribe(audio: bytes, language: str | None = None, prompt: str | None = N
     segments, info = _get_whisper().transcribe(
         io.BytesIO(audio), language=language, vad_filter=True, initial_prompt=prompt or None,
     )
-    return {"text": " ".join(s.text.strip() for s in segments).strip(), "language": info.language}
+    return {
+        "text": " ".join(s.text.strip() for s in segments).strip(),
+        "language": info.language,
+        "language_probability": round(float(info.language_probability or 0.0), 3),
+    }
+
+
+def detect_supported(result: dict, current: str) -> str:
+    """Idioma con el que conviene contestar tras transcribir sin idioma fijo.
+
+    Solo se cambia si Whisper detectó uno de los cinco idiomas del asistente con suficiente
+    seguridad; en frases muy cortas a veces confunde el español con el portugués o el gallego.
+    """
+    detected = result.get("language")
+    if detected in LANGUAGE_CODES and result.get("language_probability", 0) >= config.LANGUAGE_DETECT_CONFIDENCE:
+        return detected
+    return current
 
 
 def word_times(audio: bytes, language: str) -> list[tuple[str, float, float]]:
@@ -84,7 +100,9 @@ def list_voices(language: str | None = None, engine: str = "piper") -> list[str]
         return native + general + [DEFAULT_CLONE]
     if engine != "piper":
         raise ValueError(f"Motor de voz desconocido: '{engine}'")
-    names = [p.stem for p in config.VOICES_DIR.glob("*.onnx")]
+    # Una descarga cortada deja archivos vacíos: esos no cuentan como voces.
+    names = [p.stem for p in config.VOICES_DIR.glob("*.onnx")
+             if p.stat().st_size > 1024 and p.with_suffix(".onnx.json").exists()]
     names = [n for n in names if language is None or n.startswith(f"{language}_")]
     return sorted(names, key=lambda n: (n not in config.DEFAULT_VOICES.values(), n))
 

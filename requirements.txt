@@ -5,13 +5,15 @@ chromadb
 pypdf
 python-docx
 openpyxl
+python-pptx
+trafilatura  # importar páginas web a la base de conocimiento
 streamlit
 requests
 python-multipart
 faster-whisper
 av<16  # faster-whisper 1.2 falla con PyAV más nuevo
 piper-tts>=1.3
-# Solo para Whisper en GPU NVIDIA:
-nvidia-cublas-cu12
-nvidia-cudnn-cu12
+# Solo para Whisper en GPU NVIDIA (no existen para Mac; ahi Whisper va en el procesador):
+nvidia-cublas-cu12; sys_platform != "darwin"
+nvidia-cudnn-cu12; sys_platform != "darwin"
 playwright>=1.48  # conexión directa a Teams; usa el Chrome o Edge ya instalado

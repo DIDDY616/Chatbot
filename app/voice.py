@@ -100,7 +100,9 @@ def list_voices(language: str | None = None, engine: str = "piper") -> list[str]
         return native + general + [DEFAULT_CLONE]
     if engine != "piper":
         raise ValueError(f"Motor de voz desconocido: '{engine}'")
-    names = [p.stem for p in config.VOICES_DIR.glob("*.onnx")]
+    # Una descarga cortada deja archivos vacíos: esos no cuentan como voces.
+    names = [p.stem for p in config.VOICES_DIR.glob("*.onnx")
+             if p.stat().st_size > 1024 and p.with_suffix(".onnx.json").exists()]
     names = [n for n in names if language is None or n.startswith(f"{language}_")]
     return sorted(names, key=lambda n: (n not in config.DEFAULT_VOICES.values(), n))
 

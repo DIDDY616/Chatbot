@@ -144,7 +144,13 @@ foreach ($Modelo in $Modelos) {
 Paso "5 de 7  Voces"
 $Voces = $VocesTodas
 if ($Minimo) { $Voces = $VocesMinimas }
-$Faltan = @($Voces | Where-Object { -not (Test-Path "data\voices\$_.onnx") })
+# Una descarga cortada deja un archivo vacío o a medias: se borra y se vuelve a bajar.
+foreach ($Voz in $Voces) {
+    foreach ($Archivo in "data\voices\$Voz.onnx", "data\voices\$Voz.onnx.json") {
+        if ((Test-Path $Archivo) -and (Get-Item $Archivo).Length -lt 1024) { Remove-Item $Archivo -Force }
+    }
+}
+$Faltan = @($Voces | Where-Object { -not ((Test-Path "data\voices\$_.onnx") -and (Test-Path "data\voices\$_.onnx.json")) })
 if ($Faltan.Count) { & $Py -m piper.download_voices @Faltan --download-dir data\voices; Comprobar "al descargar las voces" }
 Write-Host ("Voces instaladas: {0}" -f @(Get-ChildItem data\voices -Filter *.onnx).Count)
 if ($VozNatural -and -not (Test-Path "data\voces_clonadas\es_demo-femenina.wav")) {

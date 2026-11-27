@@ -157,7 +157,7 @@ foreach ($Voz in $Voces) {
     }
 }
 $Faltan = @($Voces | Where-Object { -not ((Test-Path "data\voices\$_.onnx") -and (Test-Path "data\voices\$_.onnx.json")) })
-if ($Faltan.Count) { & $Py -m piper.download_voices @Faltan --download-dir data\voices; Comprobar "al descargar las voces" }
+if ($Faltan.Count) { & $Py -m scripts.descargar_voces @Faltan; Comprobar "al descargar las voces (vuelve a ejecutar este script para reintentar)" }
 Write-Host ("Voces instaladas: {0}" -f @(Get-ChildItem data\voices -Filter *.onnx).Count)
 if ($VozNatural -and -not (Test-Path "data\voces_clonadas\es_demo-femenina.wav")) {
     & $Py -m scripts.descargar_voces_referencia; Comprobar "al descargar las voces de referencia"

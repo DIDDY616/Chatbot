@@ -114,7 +114,7 @@ ollama pull bge-m3
 Descarga las voces y los personajes:
 
 ```powershell
-.\.venv\Scripts\python.exe -m piper.download_voices es_MX-claude-high en_US-lessac-medium --download-dir data\voices
+.\.venv\Scripts\python.exe -m scripts.descargar_voces es_MX-claude-high en_US-lessac-medium
 .\.venv\Scripts\python.exe -m scripts.descargar_avatares
 ```
 
@@ -178,7 +178,7 @@ cp .env.example .env
 # 4. Modelos, voces, personajes e índice (abre la app de Ollama antes)
 ollama pull gemma3:4b
 ollama pull bge-m3
-.venv/bin/python -m piper.download_voices es_MX-claude-high en_US-lessac-medium es_MX-ald-medium en_US-ryan-medium fr_FR-siwis-medium sv_SE-nst-medium de_DE-thorsten-medium --download-dir data/voices
+.venv/bin/python -m scripts.descargar_voces es_MX-claude-high en_US-lessac-medium es_MX-ald-medium en_US-ryan-medium fr_FR-siwis-medium sv_SE-nst-medium de_DE-thorsten-medium
 .venv/bin/python -m scripts.descargar_avatares
 .venv/bin/python -m app.ingest
 .venv/bin/python -m scripts.revisar

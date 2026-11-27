@@ -58,8 +58,12 @@ def check_python() -> None:
     for name in PACKAGES:
         try:
             importlib.import_module(name)
-        except ImportError:
-            report("FALTA", f"paquete {name}: ejecuta pip install -r requirements.txt")
+        except ImportError as error:
+            if "DLL load failed" in str(error):
+                report("FALTA", f"paquete {name} instalado pero no carga: falta el Visual C++ Redistributable "
+                                "(winget install -e --id Microsoft.VCRedist.2015+.x64)")
+            else:
+                report("FALTA", f"paquete {name}: ejecuta pip install -r requirements.txt")
 
 
 def check_gpu() -> None:

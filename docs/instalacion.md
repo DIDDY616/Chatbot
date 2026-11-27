@@ -27,6 +27,7 @@ Con menos de 12 GB el instalador elige solo un modelo de lenguaje más chico (`g
 |---|---|---|
 | Python 3.10 a 3.13 de python.org (de preferencia 3.12) | Ejecutar el asistente | No |
 | Controladores de NVIDIA | Usar la GPU | No |
+| Visual C++ Redistributable 2015-2022 | Lo necesita onnxruntime (voz de Piper) | Sí, si aceptas |
 | Ollama | Ejecutar el modelo de lenguaje | Sí, si aceptas |
 | Chrome o Edge | Página del avatar y entrada a Teams | No (Edge viene con Windows) |
 
@@ -249,6 +250,7 @@ Las pruebas con los modelos reales están en [demostracion.md](demostracion.md#p
 | Las respuestas tardan unos 10 segundos | Se usa `localhost` en lugar de `127.0.0.1` en la configuración | Deja las direcciones por omisión; en Windows `localhost` agrega unos 2 segundos por conexión |
 | La API se cierra sola al indexar, con `access violation` | Usas `VECTOR_STORE=chroma` y Chroma tiene un fallo en algunas computadoras con Windows ([#5392](https://github.com/chroma-core/chroma/issues/5392)) | Quita `VECTOR_STORE=chroma` de `.env` (vuelve al almacén propio) y reindexa |
 | Todo va muy lento o la API se cierra | Poca memoria RAM libre | Cierra programas pesados (emuladores, Android Studio, muchas pestañas) |
+| `DLL load failed while importing onnxruntime_pybind11_state` o la voz no funciona | Falta el Visual C++ Redistributable de Microsoft | `winget install -e --id Microsoft.VCRedist.2015+.x64` (el instalador ya lo revisa y lo ofrece) |
 | El instalador dice que no encuentra Python | Solo hay un Python de MSYS2, Git Bash o 3.14 | `winget install -e --id Python.Python.3.12` |
 | `CUDA out of memory` al hablar | La GPU no alcanza para el modelo y Whisper | En `.env` usa `LLM_MODEL=gemma3:4b` y `WHISPER_MODEL=small`, o `WHISPER_DEVICE=cpu` con `WHISPER_COMPUTE=int8` |
 | La API se cierra con "Could not load symbol cudnnGetLibConfig" | Dos versiones de cuDNN cargadas | Ya está resuelto en `app/voice.py`; si reaparece, reinstala con `instalar.ps1` |

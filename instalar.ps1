@@ -96,6 +96,16 @@ $Embed = "bge-m3"
 foreach ($Linea in Get-Content .env -Encoding UTF8) { if ($Linea -match "^\s*EMBED_MODEL\s*=\s*([^#\s]+)") { $Embed = $Matches[1] } }
 $Modelos = @($Llm, $Embed)
 
+# onnxruntime (lo usan Piper y Chroma) necesita el Visual C++ Redistributable 2015-2022. Sin el,
+# todo se instala pero la voz falla con "DLL load failed". Muchas computadoras no lo traen.
+if (-not (Test-Path "$env:WINDIR\System32\vcruntime140_1.dll")) {
+    Write-Host "Falta el Visual C++ Redistributable de Microsoft (lo necesita la voz)." -ForegroundColor Yellow
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { Detener "instalalo desde https://aka.ms/vs/17/release/vc_redist.x64.exe y vuelve a ejecutar este script." }
+    $Respuesta = Read-Host "Lo instalo con winget? Windows pedira permiso de administrador (s/n)"
+    if ($Respuesta -notmatch "^[sSyY]") { Detener "instalalo desde https://aka.ms/vs/17/release/vc_redist.x64.exe y vuelve a ejecutar este script." }
+    winget install -e --id Microsoft.VCRedist.2015+.x64 --accept-source-agreements --accept-package-agreements; Comprobar "al instalar el Visual C++ Redistributable"
+}
+
 Paso "3 de 7  Entorno de Python y librerias"
 if (-not (Test-Path $Py)) { & $Python[0] @($Python | Select-Object -Skip 1) -m venv .venv; Comprobar "al crear el entorno" }
 & $Py -m pip install --quiet --upgrade pip; Comprobar "al actualizar pip"
@@ -106,6 +116,9 @@ if ($VozNatural) {
     & $Py -m pip install --quiet torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124; Comprobar "al instalar PyTorch"
     & $Py -m pip install --quiet -r requirements-voz-natural.txt; Comprobar "al instalar la voz natural"
 }
+# Que se instalen no basta: se comprueba que carguen (una DLL faltante solo se ve al importar).
+& $Py -c "import onnxruntime, faster_whisper, piper, fastapi, streamlit" 2>$null
+if ($LASTEXITCODE -ne 0) { Detener "las librerias se instalaron pero no cargan. Instala https://aka.ms/vs/17/release/vc_redist.x64.exe, reinicia la terminal y vuelve a ejecutar este script." }
 Write-Host "Librerias instaladas"
 
 Paso "4 de 7  Ollama y modelos de lenguaje"

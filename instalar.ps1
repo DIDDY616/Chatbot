@@ -122,13 +122,19 @@ if ($LASTEXITCODE -ne 0) { Detener "las librerias se instalaron pero no cargan. 
 Write-Host "Librerias instaladas"
 
 Paso "4 de 7  Ollama y modelos de lenguaje"
+# Una terminal abierta antes de instalar Ollama no lo tiene en el PATH: se busca en su carpeta.
+$OllamaDir = Join-Path $env:LOCALAPPDATA "Programs\Ollama"
+if (-not (Get-Command ollama -ErrorAction SilentlyContinue) -and (Test-Path "$OllamaDir\ollama.exe")) { $env:Path += ";$OllamaDir" }
 if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { Detener "falta Ollama. Instalalo desde https://ollama.com/download y vuelve a ejecutar este script." }
     $Respuesta = Read-Host "Falta Ollama. Lo instalo con winget? (s/n)"
     if ($Respuesta -notmatch "^[sSyY]") { Detener "instala Ollama desde https://ollama.com/download y vuelve a ejecutar este script." }
-    winget install --id Ollama.Ollama -e --accept-source-agreements --accept-package-agreements; Comprobar "al instalar Ollama"
-    $env:Path += ";$env:LOCALAPPDATA\Programs\Ollama"
+    winget install --id Ollama.Ollama -e --accept-source-agreements --accept-package-agreements
+    # winget devuelve error si ya estaba instalado ("No available upgrade"): cuenta si el programa existe.
+    if (-not (Test-Path "$OllamaDir\ollama.exe")) { Detener "fallo al instalar Ollama. Instalalo desde https://ollama.com/download y vuelve a ejecutar este script." }
+    $env:Path += ";$OllamaDir"
 }
+Write-Host "Ollama encontrado"
 if (-not (OllamaResponde)) {
     $App = Join-Path $env:LOCALAPPDATA "Programs\Ollama\ollama app.exe"
     if (Test-Path $App) { Start-Process $App } else { Start-Process ollama -ArgumentList "serve" -WindowStyle Hidden }
